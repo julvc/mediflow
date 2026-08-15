@@ -1,0 +1,13 @@
+services:
+  localstack:
+    image: localstack/localstack
+    ports: ["4566:4566"]
+    environment:
+      SERVICES: s3,lambda,dynamodb,iam,sts,secretsmanager,sqs,logs
+      DEBUG: 1
+      LOCALSTACK_AUTH_TOKEN: "ls-zUlUzAGa-wAlu-5002-lEya-ZiholANa0a0b"
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+  postgres:
+    image: postgres:16-alpine
+    ports: ["5432:5432"]
+    environment: { POSTGRES_PASSWORD: local, POSTGRES_DB: mediflow }
