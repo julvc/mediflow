@@ -28,7 +28,8 @@ public final class DocumentoMapper {
                 entity.getNombreArchivo(),
                 entity.getUrlStorage(),
                 entity.getTipoDocumento(),
-                entity.getEstado()
+                entity.getEstado(),
+                entity.getCreatedAt()
         );
     }
 }

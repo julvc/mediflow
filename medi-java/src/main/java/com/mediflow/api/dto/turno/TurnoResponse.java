@@ -12,6 +12,7 @@ public record TurnoResponse(
         String nombreProfesional,
         Instant fechaHora,
         EstadoTurno estado,
-        String motivo
+        String motivo,
+        Instant creadoEn
 ) {
 }

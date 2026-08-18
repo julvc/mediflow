@@ -35,7 +35,8 @@ public final class TurnoMapper {
                 entity.getProfesional().getNombres() + " " + entity.getProfesional().getApellidos(),
                 entity.getFechaHora(),
                 entity.getEstado(),
-                entity.getMotivo()
+                entity.getMotivo(),
+                entity.getCreatedAt()
         );
     }
 }

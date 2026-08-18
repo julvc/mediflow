@@ -1,9 +1,12 @@
 package com.mediflow.api.service.impl;
 
 import com.mediflow.api.domain.Documento;
+import com.mediflow.api.domain.EstadoDocumento;
 import com.mediflow.api.domain.Turno;
+import com.mediflow.api.dto.documento.CambioEstadoDocumentoRequest;
 import com.mediflow.api.dto.documento.DocumentoRequest;
 import com.mediflow.api.dto.documento.DocumentoResponse;
+import com.mediflow.api.exception.ConflictoDeNegocioException;
 import com.mediflow.api.exception.ResourceNotFoundException;
 import com.mediflow.api.mapper.DocumentoMapper;
 import com.mediflow.api.repository.DocumentoRepository;
@@ -13,11 +16,25 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class DocumentoServiceImpl implements DocumentoService {
+
+    // Mismo enfoque que TurnoServiceImpl: máquina de estados como Map, no como
+    // patrón State (3 valores fijos, sin ganancia de una jerarquía de clases).
+    // PROCESADO y ERROR son terminales: el worker no reintenta un documento fallido,
+    // sube uno nuevo (evita perder el motivo del error de un intento previo).
+    private static final Map<EstadoDocumento, Set<EstadoDocumento>> TRANSICIONES_VALIDAS = new EnumMap<>(Map.of(
+            EstadoDocumento.PENDIENTE, EnumSet.of(EstadoDocumento.PROCESADO, EstadoDocumento.ERROR),
+            EstadoDocumento.PROCESADO, EnumSet.noneOf(EstadoDocumento.class),
+            EstadoDocumento.ERROR, EnumSet.noneOf(EstadoDocumento.class)
+    ));
 
     private final DocumentoRepository documentoRepository;
     private final TurnoRepository turnoRepository;
@@ -43,6 +60,21 @@ public class DocumentoServiceImpl implements DocumentoService {
         return documentoRepository.findByTurnoId(turnoId).stream()
                 .map(DocumentoMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public DocumentoResponse cambiarEstado(Long id, CambioEstadoDocumentoRequest request) {
+        Documento documento = buscarOFallar(id);
+        EstadoDocumento actual = documento.getEstado();
+        EstadoDocumento nuevo = request.estado();
+
+        if (!TRANSICIONES_VALIDAS.get(actual).contains(nuevo)) {
+            throw new ConflictoDeNegocioException("No se puede pasar de " + actual + " a " + nuevo);
+        }
+
+        documento.setEstado(nuevo);
+        return DocumentoMapper.toResponse(documentoRepository.save(documento));
     }
 
     @Override

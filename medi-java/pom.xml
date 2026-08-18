@@ -58,6 +58,13 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- Documentación de la API: escanea los @RestController existentes, no requiere anotar nada -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.6.0</version>
+        </dependency>
+
         <!-- Boilerplate de entidades -->
         <dependency>
             <groupId>org.projectlombok</groupId>

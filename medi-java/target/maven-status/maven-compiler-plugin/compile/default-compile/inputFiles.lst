@@ -9,6 +9,7 @@ C:\Users\suely\Documents\mediflow\medi-java\src\main\java\com\mediflow\api\domai
 C:\Users\suely\Documents\mediflow\medi-java\src\main\java\com\mediflow\api\domain\Paciente.java
 C:\Users\suely\Documents\mediflow\medi-java\src\main\java\com\mediflow\api\domain\Profesional.java
 C:\Users\suely\Documents\mediflow\medi-java\src\main\java\com\mediflow\api\domain\Turno.java
+C:\Users\suely\Documents\mediflow\medi-java\src\main\java\com\mediflow\api\dto\documento\CambioEstadoDocumentoRequest.java
 C:\Users\suely\Documents\mediflow\medi-java\src\main\java\com\mediflow\api\dto\documento\DocumentoRequest.java
 C:\Users\suely\Documents\mediflow\medi-java\src\main\java\com\mediflow\api\dto\documento\DocumentoResponse.java
 C:\Users\suely\Documents\mediflow\medi-java\src\main\java\com\mediflow\api\dto\paciente\PacienteRequest.java

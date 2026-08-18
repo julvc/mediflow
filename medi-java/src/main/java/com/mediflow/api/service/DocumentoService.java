@@ -1,5 +1,6 @@
 package com.mediflow.api.service;
 
+import com.mediflow.api.dto.documento.CambioEstadoDocumentoRequest;
 import com.mediflow.api.dto.documento.DocumentoRequest;
 import com.mediflow.api.dto.documento.DocumentoResponse;
 
@@ -12,6 +13,8 @@ public interface DocumentoService {
     DocumentoResponse obtenerPorId(Long id);
 
     List<DocumentoResponse> listarPorTurno(Long turnoId);
+
+    DocumentoResponse cambiarEstado(Long id, CambioEstadoDocumentoRequest request);
 
     void eliminar(Long id);
 }

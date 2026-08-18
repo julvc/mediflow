@@ -26,7 +26,8 @@ public final class ProfesionalMapper {
                 entity.getNombres(),
                 entity.getApellidos(),
                 entity.getEspecialidad(),
-                entity.getEmail()
+                entity.getEmail(),
+                entity.getCreatedAt()
         );
     }
 

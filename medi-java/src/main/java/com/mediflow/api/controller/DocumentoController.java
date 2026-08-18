@@ -1,5 +1,6 @@
 package com.mediflow.api.controller;
 
+import com.mediflow.api.dto.documento.CambioEstadoDocumentoRequest;
 import com.mediflow.api.dto.documento.DocumentoRequest;
 import com.mediflow.api.dto.documento.DocumentoResponse;
 import com.mediflow.api.service.DocumentoService;
@@ -8,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -46,6 +48,11 @@ public class DocumentoController {
     @GetMapping
     public List<DocumentoResponse> listarPorTurno(@RequestParam Long turnoId) {
         return documentoService.listarPorTurno(turnoId);
+    }
+
+    @PatchMapping("/{id}/estado")
+    public DocumentoResponse cambiarEstado(@PathVariable Long id, @Valid @RequestBody CambioEstadoDocumentoRequest request) {
+        return documentoService.cambiarEstado(id, request);
     }
 
     @DeleteMapping("/{id}")
