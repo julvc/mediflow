@@ -63,3 +63,9 @@ domain deployed on two clouds:
 - `plan-14-dias-aws-gcp-v2-costo-cero.md` and `anexo-a-docker-kubernetes.md`
   are gitignored (personal planning docs, not meant to be published) — don't
   assume they're part of the public-facing portfolio content.
+
+# Idioma y Estilo
+
+- Comunícate siempre en español neutral latinoamericano.
+- Usa estrictamente el pronombre "tú" y las formas de tuteo.
+- Está prohibido el uso del voseo y modismos regionales argentinos.
