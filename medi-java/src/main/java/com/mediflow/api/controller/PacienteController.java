@@ -6,6 +6,7 @@ import com.mediflow.api.service.PacienteService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,6 +40,7 @@ public class PacienteController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('PROFESIONAL','ADMIN') or @recursoAuth.esPropioPaciente(authentication, #id)")
     public PacienteResponse obtenerPorId(@PathVariable Long id) {
         return pacienteService.obtenerPorId(id);
     }
@@ -54,6 +56,7 @@ public class PacienteController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         pacienteService.eliminar(id);
         return ResponseEntity.noContent().build();

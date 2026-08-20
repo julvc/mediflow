@@ -1477,6 +1477,7 @@ package com.mediflow.api;
 import com.mediflow.api.domain.Rol;
 import com.mediflow.api.dto.auth.LoginRequest;
 import com.mediflow.api.dto.auth.LoginResponse;
+import com.mediflow.api.dto.auth.RefreshRequest;
 import com.mediflow.api.dto.auth.RegistroRequest;
 import com.mediflow.api.dto.auth.UsuarioResponse;
 import com.mediflow.api.dto.paciente.PacienteRequest;
@@ -1560,13 +1561,33 @@ class AuthIntegrationTest {
         ResponseEntity<String> response = restTemplate.postForEntity("/api/v1/auth/registro", registroAdmin, String.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
+
+    // Agregado tras el review de Task 6: la rotacion de refresh token (AuthServiceImpl.refrescar)
+    // no tenia ningun test automatizado que la protegiera de una regresion futura — este es el
+    // unico lugar del plan que prueba que reusar un refresh token ya canjeado falla.
+    @Test
+    void refrescar_conRefreshTokenYaCanjeado_devuelve401() {
+        LoginResponse loginAdmin = restTemplate.postForObject(
+                "/api/v1/auth/login", new LoginRequest("admin@mediflow.cl", "admin1234"), LoginResponse.class);
+        String refreshTokenOriginal = loginAdmin.refreshToken();
+
+        ResponseEntity<LoginResponse> primerRefresh = restTemplate.postForEntity(
+                "/api/v1/auth/refresh", new RefreshRequest(refreshTokenOriginal), LoginResponse.class);
+        assertThat(primerRefresh.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(primerRefresh.getBody().refreshToken()).isNotEqualTo(refreshTokenOriginal);
+
+        // El token original ya fue canjeado (revocado) por el refresh anterior — reusarlo debe fallar.
+        ResponseEntity<String> segundoRefresh = restTemplate.postForEntity(
+                "/api/v1/auth/refresh", new RefreshRequest(refreshTokenOriginal), String.class);
+        assertThat(segundoRefresh.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
 }
 ```
 
 - [ ] **Step 2: Correr el test de integración**
 
 Run: `cd medi-java && mvn test -Dtest=AuthIntegrationTest`
-Expected: PASS (3 tests) — usa Testcontainers, tarda ~60-90s (levanta Postgres real + Spring Boot).
+Expected: PASS (4 tests) — usa Testcontainers, tarda ~60-90s (levanta Postgres real + Spring Boot).
 
 - [ ] **Step 3: Correr toda la suite completa**
 

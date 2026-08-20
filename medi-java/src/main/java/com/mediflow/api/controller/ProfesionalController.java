@@ -6,6 +6,7 @@ import com.mediflow.api.service.ProfesionalService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,6 +38,7 @@ public class ProfesionalController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('PACIENTE','ADMIN') or @recursoAuth.esPropioProfesional(authentication, #id)")
     public ProfesionalResponse obtenerPorId(@PathVariable Long id) {
         return profesionalService.obtenerPorId(id);
     }
@@ -52,6 +54,7 @@ public class ProfesionalController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         profesionalService.eliminar(id);
         return ResponseEntity.noContent().build();
