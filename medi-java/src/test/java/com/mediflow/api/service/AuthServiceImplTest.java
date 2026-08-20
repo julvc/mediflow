@@ -1,5 +1,6 @@
 package com.mediflow.api.service;
 
+import com.mediflow.api.domain.Paciente;
 import com.mediflow.api.domain.Rol;
 import com.mediflow.api.domain.Usuario;
 import com.mediflow.api.dto.auth.LoginRequest;
@@ -121,10 +122,28 @@ class AuthServiceImplTest {
     @Test
     void registrar_conPacienteInexistente_lanzaResourceNotFound() {
         when(usuarioRepository.existsByEmail("ana@test.cl")).thenReturn(false);
-        when(pacienteRepository.existsById(99L)).thenReturn(false);
+        when(pacienteRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.registrar(
                 new RegistroRequest("ana@test.cl", "clave1234", Rol.PACIENTE, 99L, null)))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    // Fix Critical del review de rama: sin este chequeo, cualquier anonimo podia
+    // registrarse con el pacienteId de OTRA persona (con tal de que esa ficha aun no
+    // tuviera Usuario vinculado) y tomar control de ella. Se exige que el email del
+    // request coincida con el email guardado en la ficha del Paciente.
+    @Test
+    void registrar_conEmailQueNoCoincideConElDeLaFichaDelPaciente_lanzaResourceNotFound() {
+        Paciente paciente = Paciente.builder()
+                .id(99L).email("dueno-real@test.cl").build();
+        when(usuarioRepository.existsByEmail("atacante@test.cl")).thenReturn(false);
+        when(pacienteRepository.findById(99L)).thenReturn(Optional.of(paciente));
+
+        assertThatThrownBy(() -> authService.registrar(
+                new RegistroRequest("atacante@test.cl", "clave1234", Rol.PACIENTE, 99L, null)))
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(usuarioRepository, never()).save(any());

@@ -30,6 +30,7 @@ public class PacienteController {
     private final PacienteService pacienteService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('PROFESIONAL','ADMIN')")
     public ResponseEntity<PacienteResponse> crear(@Valid @RequestBody PacienteRequest request) {
         PacienteResponse creado = pacienteService.crear(request);
         URI ubicacion = ServletUriComponentsBuilder.fromCurrentRequest()
@@ -46,11 +47,13 @@ public class PacienteController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('PROFESIONAL','ADMIN')")
     public List<PacienteResponse> listarTodos() {
         return pacienteService.listarTodos();
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('PROFESIONAL','ADMIN')")
     public PacienteResponse actualizar(@PathVariable Long id, @Valid @RequestBody PacienteRequest request) {
         return pacienteService.actualizar(id, request);
     }

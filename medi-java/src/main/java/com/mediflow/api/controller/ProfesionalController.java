@@ -28,6 +28,7 @@ public class ProfesionalController {
     private final ProfesionalService profesionalService;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProfesionalResponse> crear(@Valid @RequestBody ProfesionalRequest request) {
         ProfesionalResponse creado = profesionalService.crear(request);
         URI ubicacion = ServletUriComponentsBuilder.fromCurrentRequest()
@@ -38,17 +39,20 @@ public class ProfesionalController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('PACIENTE','ADMIN') or @recursoAuth.esPropioProfesional(authentication, #id)")
+    @PreAuthorize("hasAnyRole('PROFESIONAL','ADMIN') or @recursoAuth.esPropioProfesional(authentication, #id)")
     public ProfesionalResponse obtenerPorId(@PathVariable Long id) {
         return profesionalService.obtenerPorId(id);
     }
 
+    // Listado abierto a cualquier autenticado a proposito: un PACIENTE necesita poder
+    // listar profesionales para agendar un turno.
     @GetMapping
     public List<ProfesionalResponse> listarTodos() {
         return profesionalService.listarTodos();
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @recursoAuth.esPropioProfesional(authentication, #id)")
     public ProfesionalResponse actualizar(@PathVariable Long id, @Valid @RequestBody ProfesionalRequest request) {
         return profesionalService.actualizar(id, request);
     }

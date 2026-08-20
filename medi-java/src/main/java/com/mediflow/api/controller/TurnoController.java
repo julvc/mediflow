@@ -7,6 +7,7 @@ import com.mediflow.api.service.TurnoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -38,14 +39,20 @@ public class TurnoController {
         return ResponseEntity.created(ubicacion).body(creado);
     }
 
+    // @PostAuthorize (no @PreAuthorize) porque aqui no hay forma de saber el dueno
+    // del turno antes de cargarlo.
     @GetMapping("/{id}")
+    @PostAuthorize("hasAnyRole('PROFESIONAL','ADMIN') or @recursoAuth.esPropioPaciente(authentication, returnObject.pacienteId())")
     public TurnoResponse obtenerPorId(@PathVariable Long id) {
         return turnoService.obtenerPorId(id);
     }
 
     // Un solo endpoint de listado: si viene pacienteId filtra, si no trae todos.
     // Evita duplicar la ruta de listado en /turnos y /turnos/por-paciente.
+    // Un PACIENTE solo puede listar los suyos (pasando su propio pacienteId); sin
+    // pacienteId (intentando listar TODOS) la condicion falla y da 403.
     @GetMapping
+    @PreAuthorize("hasAnyRole('PROFESIONAL','ADMIN') or (#pacienteId != null and @recursoAuth.esPropioPaciente(authentication, #pacienteId))")
     public List<TurnoResponse> listar(@RequestParam(required = false) Long pacienteId) {
         return pacienteId != null ? turnoService.listarPorPaciente(pacienteId) : turnoService.listarTodos();
     }

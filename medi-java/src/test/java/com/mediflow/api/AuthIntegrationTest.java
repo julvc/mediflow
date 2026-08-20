@@ -97,6 +97,51 @@ class AuthIntegrationTest {
         assertThat(propioPaciente.getBody().id()).isEqualTo(pacienteId);
     }
 
+    // Fix Important del review de rama: sin este test, si RecursoAuthService.esPropioPaciente
+    // devolviera true siempre (bug), la suite completa seguiria en verde sin detectarlo.
+    @Test
+    void pacienteAutenticado_intentaVerFichaDeOtroPaciente_devuelve403() {
+        LoginResponse loginAdmin = restTemplate.postForObject(
+                "/api/v1/auth/login", new LoginRequest("admin@mediflow.cl", "admin1234"), LoginResponse.class);
+        HttpHeaders headersAdmin = new HttpHeaders();
+        headersAdmin.setBearerAuth(loginAdmin.accessToken());
+
+        PacienteRequest pacienteRequestFernanda = new PacienteRequest(
+                "55555555-5", "Fernanda", "Lopez",
+                java.time.LocalDate.of(1990, 3, 15), "fernanda2@test.cl", "922222222");
+        ResponseEntity<PacienteResponse> pacienteResponseFernanda = restTemplate.exchange(
+                "/api/v1/pacientes", HttpMethod.POST,
+                new HttpEntity<>(pacienteRequestFernanda, headersAdmin), PacienteResponse.class);
+        assertThat(pacienteResponseFernanda.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        Long pacienteIdFernanda = pacienteResponseFernanda.getBody().id();
+
+        RegistroRequest registroRequestFernanda = new RegistroRequest(
+                "fernanda2@test.cl", "clave12345", Rol.PACIENTE, pacienteIdFernanda, null);
+        ResponseEntity<UsuarioResponse> registroResponseFernanda = restTemplate.postForEntity(
+                "/api/v1/auth/registro", registroRequestFernanda, UsuarioResponse.class);
+        assertThat(registroResponseFernanda.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        LoginResponse loginFernanda = restTemplate.postForObject(
+                "/api/v1/auth/login", new LoginRequest("fernanda2@test.cl", "clave12345"), LoginResponse.class);
+        HttpHeaders headersFernanda = new HttpHeaders();
+        headersFernanda.setBearerAuth(loginFernanda.accessToken());
+
+        // Segundo paciente distinto, sin cuenta propia vinculada.
+        PacienteRequest pacienteRequestOtro = new PacienteRequest(
+                "66666666-6", "Marcelo", "Diaz",
+                java.time.LocalDate.of(1985, 7, 1), "marcelo@test.cl", "933333333");
+        ResponseEntity<PacienteResponse> pacienteResponseOtro = restTemplate.exchange(
+                "/api/v1/pacientes", HttpMethod.POST,
+                new HttpEntity<>(pacienteRequestOtro, headersAdmin), PacienteResponse.class);
+        assertThat(pacienteResponseOtro.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        Long pacienteIdOtro = pacienteResponseOtro.getBody().id();
+
+        ResponseEntity<String> respuesta = restTemplate.exchange(
+                "/api/v1/pacientes/" + pacienteIdOtro, HttpMethod.GET,
+                new HttpEntity<>(headersFernanda), String.class);
+        assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
     @Test
     void registrarAdmin_sinAutenticacion_devuelve403() {
         RegistroRequest registroAdmin = new RegistroRequest("otro-admin@test.cl", "clave12345", Rol.ADMIN, null, null);

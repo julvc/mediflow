@@ -39,7 +39,12 @@ public class DocumentoController {
         return ResponseEntity.created(ubicacion).body(creado);
     }
 
+    // TODO: un Documento no tiene dueno directo (pertenece a un Turno, que pertenece
+    // a un Paciente - seria un chequeo de 2 saltos) y hoy no hay flujo de frontend
+    // donde un PACIENTE necesite ver sus propios documentos directamente. Restringido
+    // a staff por ahora en vez de construir ese chequeo sin caso de uso real (YAGNI).
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('PROFESIONAL','ADMIN')")
     public DocumentoResponse obtenerPorId(@PathVariable Long id) {
         return documentoService.obtenerPorId(id);
     }
@@ -47,11 +52,13 @@ public class DocumentoController {
     // turnoId es obligatorio: listar por turno es el único caso de uso pedido,
     // un listado global no tiene consumidor real hoy (YAGNI).
     @GetMapping
+    @PreAuthorize("hasAnyRole('PROFESIONAL','ADMIN')")
     public List<DocumentoResponse> listarPorTurno(@RequestParam Long turnoId) {
         return documentoService.listarPorTurno(turnoId);
     }
 
     @PatchMapping("/{id}/estado")
+    @PreAuthorize("hasAnyRole('PROFESIONAL','ADMIN')")
     public DocumentoResponse cambiarEstado(@PathVariable Long id, @Valid @RequestBody CambioEstadoDocumentoRequest request) {
         return documentoService.cambiarEstado(id, request);
     }

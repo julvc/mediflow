@@ -1,5 +1,6 @@
 package com.mediflow.api.service.impl;
 
+import com.mediflow.api.domain.Paciente;
 import com.mediflow.api.domain.RefreshToken;
 import com.mediflow.api.domain.Rol;
 import com.mediflow.api.domain.Usuario;
@@ -64,7 +65,7 @@ public class AuthServiceImpl implements AuthService {
         if (usuarioRepository.existsByEmail(request.email())) {
             throw new ConflictoDeNegocioException("Ya existe un usuario con el email " + request.email());
         }
-        validarVinculoDeDominio(request.rol(), request.pacienteId(), request.profesionalId());
+        validarVinculoDeDominio(request.rol(), request.email(), request.pacienteId(), request.profesionalId());
 
         Usuario usuario = Usuario.builder()
                 .email(request.email())
@@ -139,10 +140,18 @@ public class AuthServiceImpl implements AuthService {
         return new LoginResponse(accessToken, refreshTokenPlano, accessTokenMinutos * 60);
     }
 
-    private void validarVinculoDeDominio(Rol rol, Long pacienteId, Long profesionalId) {
+    private void validarVinculoDeDominio(Rol rol, String email, Long pacienteId, Long profesionalId) {
         switch (rol) {
+            // El registro publico de PACIENTE no exige autenticacion previa (a diferencia de
+            // PROFESIONAL, que solo lo puede vincular un ADMIN ya autenticado - ver el chequeo
+            // solicitanteEsAdmin() en registrar()). Sin este chequeo de email, cualquier anonimo
+            // podria vincularse a la ficha de OTRO paciente con solo conocer su pacienteId,
+            // tomando control de esa ficha. Se usa el mismo mensaje que "no encontrado" para no
+            // revelar via un mensaje distinto que el paciente existe pero el email no coincide
+            // (eso seria un oraculo para enumerar pacientes por id).
             case PACIENTE -> {
-                if (pacienteId == null || !pacienteRepository.existsById(pacienteId)) {
+                Paciente paciente = pacienteId == null ? null : pacienteRepository.findById(pacienteId).orElse(null);
+                if (paciente == null || !paciente.getEmail().equalsIgnoreCase(email)) {
                     throw new ResourceNotFoundException("Paciente " + pacienteId + " no encontrado");
                 }
             }
