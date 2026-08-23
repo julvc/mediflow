@@ -1,6 +1,6 @@
 # MediFlow
 
-Proyecto portfolio que resuelve el mismo dominio de negocio — gestión de turnos médicos y procesamiento de documentos — desplegado en **dos nubes distintas**, para comparar decisiones de arquitectura en vez de repetir el mismo despliegue dos veces.
+Proyecto portfolio que resuelve el mismo dominio de negocio — gestión de turnos médicos y procesamiento de documentos — comparado en dos ejes: **dos nubes distintas** (AWS/GCP) y **dos stacks de backend distintos** (Java/Python), para tener criterio propio y contenido real de entrevista en ambos, no para migrar de uno a otro.
 
 ## Qué hace
 
@@ -12,11 +12,14 @@ Un centro médico necesita:
 
 | Componente | Stack | Rol |
 |---|---|---|
-| `medi-java` | Spring Boot 3 / Java 17, Postgres, Flyway | API REST del dominio (Paciente, Profesional, Turno, Documento), auth JWT + roles |
-| `medi-frontend` | React 19, Vite, Tailwind CSS v4 | SPA que consume la API: dashboard, calendario de turnos, gestión de pacientes/profesionales/documentos, flujos de registro por rol |
-| `medi-python` | Python 3.12 | Worker `procesar_documento(bucket, key)`: agnóstico de nube a propósito — la misma función corre sin cambios como AWS Lambda o como GCP Cloud Run Function |
+| `medi-java` | Spring Boot 3 / Java 17, Postgres, Flyway | API REST completa del dominio (Paciente, Profesional, Turno, Documento), auth JWT + roles — el backend principal |
+| `medi-frontend` | React 19, Vite, Tailwind CSS v4 | SPA que consume la API Java: dashboard, calendario de turnos, gestión de pacientes/profesionales/documentos, flujos de registro por rol |
+| `medi-python/backend` | FastAPI, SQLAlchemy, Postgres propio | Segunda API REST del mismo dominio (Paciente + auth JWT hoy, como patrón de referencia), en paralelo a Java — no la reemplaza |
+| `medi-python/procesador` | pypdf, pymupdf, Pillow | Worker de documentos: agnóstico de nube y usado por ambos backends — biblioteca directa para el backend Python, HTTP (`worker_api.py`) para el backend Java |
 
 **Por qué dos nubes:** la API Java se despliega en **GCP** (Cloud Run + Cloud SQL, el mismo dominio en modelo relacional). El mismo worker Python se valida contra **AWS** (Lambda + DynamoDB single-table, storage por eventos) usando LocalStack para desarrollo y sandboxes gratuitos de AWS Builder Center para validación real — sin gastar un dólar. El valor del proyecto está en decidir *qué cambia y qué no* entre ambas nubes, no en desplegar dos veces lo mismo.
+
+**Por qué dos backends:** mismo razonamiento, otro eje — Java/Spring Boot y Python/FastAPI resolviendo el mismo dominio, con la misma forma de capas (router/controller → service → repository, con interfaces que el service depende para invertir la dependencia). El objetivo es poder defender ambos stacks en una entrevista con código real detrás, no solo teoría.
 
 ## Decisiones técnicas que vale la pena mirar
 
@@ -29,7 +32,8 @@ Un centro médico necesita:
 
 - `medi-java`: dominio completo, API REST, auth JWT + roles, migraciones, Dockerfile y tests unitarios/integración implementados.
 - `medi-frontend`: SPA en React completa — auth con refresh de tokens, CRUD de Pacientes/Profesionales, Turnos con vista calendario, Documentos embebidos por turno, registro por rol, tema claro/oscuro.
-- `medi-python`: pendiente.
+- `medi-python/procesador`: implementado y probado (valida PDF, extrae metadata, genera thumbnail), con capas SOLID (interfaces + implementaciones inyectadas). Pendiente: adaptadores de evento S3/GCS (Terraform, día 3 en adelante).
+- `medi-python/backend`: API en paralelo a Java implementada — `Paciente` CRUD + auth JWT propio, 15 tests. Pendiente: extender a Profesional/Turno/Documento con el mismo patrón; cliente Java (`RestClient`) que llame a `worker_api.py` — el contrato HTTP ya está definido y probado, falta conectarlo desde `DocumentoController`.
 - Infraestructura como código (Terraform AWS/GCP): pendiente.
 
 Ver `medi-java/INFORME-AVANCE.md` para el detalle técnico de lo construido hasta ahora.

@@ -27,7 +27,48 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
                              # to avoid drifting off the port the backend's CORS allows
   npm run build              # production build, what a recruiter would see compiled
   ```
-- **`medi-python/`** is still an empty placeholder directory — no code yet.
+- **`medi-python/`** has two independent pieces, both SOLID-layered on purpose
+  (interfaces the orchestrator/service depends on, concrete implementations
+  injected — see `.superpowers/`-free comments in the code itself for the
+  "why" of each split):
+  - **`procesador/`** — the cloud-agnostic worker core.
+    `ProcesadorDocumentoService.procesar(contenido: bytes, nombre_archivo: str)`
+    validates PDF magic bytes, extracts metadata (`ExtractorMetadataPyPDF`,
+    wraps `pypdf`), and rasterizes the first page into a PNG thumbnail
+    (`GeneradorThumbnailPyMuPDF` — `pymupdf` renders the pixels, since Pillow
+    alone cannot read PDF pages; Pillow does the resize/encode). Both are
+    injected via `Protocol` interfaces (DIP), so swapping the renderer later
+    is a new implementation class, not a change to the orchestrator. Raises
+    `DocumentoInvalidoError` instead of a sentinel value, so a future
+    Lambda/Cloud Run Function adapter can just let it propagate into that
+    platform's native retry/DLQ mechanism. No AWS/GCP SDK, no FastAPI import
+    here — the `(bucket, key)` event adapters are Día 3/7 work, not yet written.
+  - **`worker_api.py`** — a thin FastAPI wrapper (`POST /procesar`, multipart
+    upload) around `procesador/`. This is the integration point for
+    **medi-java**, which can't import Python directly and calls this over
+    HTTP; **medi-python/backend** instead imports `procesador/` as a library
+    (no HTTP hop to itself). No Java client exists yet — the contract
+    (`POST /procesar` → `{nombreArchivo, tamanoBytes, paginas, titulo, autor,
+    thumbnailPngBase64}`, `422` on an invalid PDF) is curl-verified but not
+    yet wired into `DocumentoController`.
+  - **`backend/`** — a second, independent REST API (FastAPI + SQLAlchemy +
+    JWT), built **in parallel to `medi-java`, not replacing it** — the point
+    is comparing the same domain in both stacks, same as the AWS/GCP split
+    compares clouds. Same layering as medi-java (router → service → repository,
+    interfaces the service depends on injected at the router). Currently
+    covers `Paciente` CRUD + `/auth/registro` + `/auth/login` (own JWT, own
+    `Usuario` table, no refresh-token rotation or roles yet — that's medi-java's
+    depth, not duplicated here). Runs against its **own** Postgres instance
+    (`aws-local-sandbox` service `postgres-python`, port 5433, db
+    `mediflow_python`) — deliberately not sharing schema with medi-java's
+    Flyway-managed `mediflow` database.
+  ```bash
+  cd medi-python
+  python -m venv .venv && .venv/Scripts/pip install -r requirements.txt   # Windows
+  .venv/Scripts/python -m pytest -v                                       # all tests (SQLite, no Docker needed)
+  .venv/Scripts/python -m uvicorn backend.main:app --port 8001            # needs postgres-python up
+  .venv/Scripts/python -m uvicorn worker_api:app --port 8000
+  ```
 
 `aws-local-sandbox/docker-compose.yml` starts LocalStack (AWS emulator) and the
 local Postgres 16 container the backend needs:
@@ -47,18 +88,29 @@ generic "Failed to fetch" until either the origin is added or the port frees up.
 
 ## Project intent
 
-MediFlow is a portfolio/learning project comparing the same document-processing
-domain deployed on two clouds:
+MediFlow is a portfolio/learning project comparing the same domain across two
+axes: two clouds (AWS/GCP), and — as of this session — two backend stacks
+(Java/Python), specifically so the author can compare and speak to both in
+interviews. Neither comparison is a migration; both sides of each pair stay
+alive and are meant to be read side by side.
 
 - **`medi-java`** — Spring Boot 3 (Java 17) REST API: `Paciente`, `Profesional`,
   `Turno`, `Documento` domain, Flyway migrations, deployed to GCP Cloud Run.
-- **`medi-python`** — a cloud-agnostic worker function
-  `procesar_documento(bucket, key)` (validates magic bytes, extracts PDF
+  The primary/most complete backend (full JWT+refresh+RBAC, all 4 domains, 35
+  tests).
+- **`medi-python/backend`** — a second REST API (FastAPI + SQLAlchemy), same
+  layered/SOLID shape as medi-java, covering `Paciente` + basic JWT auth today
+  as the reference pattern for extending to the rest of the domain. Runs
+  against its own Postgres, not medi-java's.
+- **`medi-python/procesador`** — a cloud-agnostic worker function
+  (`ProcesadorDocumentoService.procesar`, validates magic bytes, extracts PDF
   metadata, generates thumbnails) meant to run unmodified as both an AWS
-  Lambda and a GCP Cloud Run Function. Keep this function's core logic free
-  of any AWS/GCP SDK calls — provider-specific bucket/event adapters should
-  wrap it, not be mixed into it, since sharing this code across both clouds
-  is the whole point of the design.
+  Lambda and a GCP Cloud Run Function, AND to be callable from both backends
+  (imported directly by `medi-python/backend`, reached over HTTP via
+  `worker_api.py` by `medi-java`). Keep this function's core logic free of any
+  AWS/GCP SDK calls (and free of FastAPI) — adapters wrap it, never mix into
+  it, since sharing this code across both clouds *and* both backends is the
+  whole point of the design.
 
 ### Cloud split (see `plan-14-dias-aws-gcp-v2-costo-cero.md`)
 

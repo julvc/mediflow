@@ -11,3 +11,11 @@ services:
     image: postgres:16-alpine
     ports: ["5432:5432"]
     environment: { POSTGRES_PASSWORD: local, POSTGRES_DB: mediflow }
+  # Postgres aparte para medi-python/backend — a proposito no comparte instancia
+  # ni esquema con el Postgres de medi-java (que Flyway administra): son dos
+  # backends independientes que resuelven el mismo dominio para comparar stacks,
+  # no una sola app con dos lenguajes.
+  postgres-python:
+    image: postgres:16-alpine
+    ports: ["5433:5432"]
+    environment: { POSTGRES_PASSWORD: local, POSTGRES_DB: mediflow_python }

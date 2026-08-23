@@ -5,4 +5,10 @@ bitacora-mediflow.html
 .worktrees/
 CLAUDE.md
 .superpowers/
-CLAUDE.md
+
+# medi-python
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.db
