@@ -1,0 +1,56 @@
+import { Link } from 'react-router-dom'
+import { useApi } from '../hooks/useApi'
+import { listarProfesionales } from '../api/profesionales'
+import { useAuth } from '../auth/useAuth'
+import Table from '../components/ui/Table'
+import Button from '../components/ui/Button'
+import EmptyState from '../components/ui/EmptyState'
+
+export default function ProfesionalesListPage() {
+  const { user } = useAuth()
+  const { data, loading, error } = useApi(listarProfesionales, [])
+
+  return (
+    <div>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 style={{ fontFamily: 'var(--font-display)' }} className="text-2xl font-semibold text-[var(--text)]">
+          Profesionales
+        </h1>
+        {user.rol === 'ADMIN' && (
+          <Link to="/profesionales/nuevo">
+            <Button>Nuevo profesional</Button>
+          </Link>
+        )}
+      </div>
+
+      {loading && <p className="text-[var(--text-muted)]">Cargando...</p>}
+      {error && <p className="text-[var(--danger)]">{error.message}</p>}
+      {data?.length === 0 && <EmptyState>No hay profesionales registrados.</EmptyState>}
+
+      {data?.length > 0 && (
+        <Table>
+          <thead>
+            <tr className="border-b border-[var(--border)] text-[var(--text-muted)]">
+              <th className="px-4 py-3 font-medium">Nombre</th>
+              <th className="px-4 py-3 font-medium">Especialidad</th>
+              <th className="px-4 py-3 font-medium">Email</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((p) => (
+              <tr key={p.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--surface-2)]">
+                <td className="px-4 py-3">
+                  <Link to={`/profesionales/${p.id}`} className="text-[var(--accent)] hover:underline">
+                    {p.nombres} {p.apellidos}
+                  </Link>
+                </td>
+                <td className="px-4 py-3">{p.especialidad}</td>
+                <td className="px-4 py-3">{p.email}</td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      )}
+    </div>
+  )
+}

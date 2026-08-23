@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #F7F4EC;
+  --surface: #FFFFFF;
+  --surface-2: #EFEAD9;
+  --border: #DFD8C2;
+  --text: #211C12;
+  --text-muted: #6B6350;
+  --accent: #B5721E;
+  --accent-soft: #F1DFC0;
+  --accent-2: #0E7C70;
+  --accent-2-soft: #D9F0EC;
+  --good: #2E7D42;
+  --warn: #B5721E;
+  --danger: #B23A32;
+  --danger-soft: #F6DEDB;
+
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-body: 'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161F;
+    --surface: #1A2030;
+    --surface-2: #212840;
+    --border: #2C3450;
+    --text: #ECE6D8;
+    --text-muted: #97A0BA;
+    --accent: #E8A33D;
+    --accent-soft: #4A3620;
+    --accent-2: #56D2C4;
+    --accent-2-soft: #163634;
+    --good: #6ABF7B;
+    --warn: #E8A33D;
+    --danger: #E2665B;
+    --danger-soft: #3A1F20;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161F;
+  --surface: #1A2030;
+  --surface-2: #212840;
+  --border: #2C3450;
+  --text: #ECE6D8;
+  --text-muted: #97A0BA;
+  --accent: #E8A33D;
+  --accent-soft: #4A3620;
+  --accent-2: #56D2C4;
+  --accent-2-soft: #163634;
+  --good: #6ABF7B;
+  --warn: #E8A33D;
+  --danger: #E2665B;
+  --danger-soft: #3A1F20;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  margin: 0;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+}
