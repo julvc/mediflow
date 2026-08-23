@@ -44,6 +44,8 @@ class TurnoServiceImplTest {
     private PacienteRepository pacienteRepository;
     @Mock
     private ProfesionalRepository profesionalRepository;
+    @Mock
+    private AuditoriaService auditoriaService;
 
     @InjectMocks
     private TurnoServiceImpl turnoService;

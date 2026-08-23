@@ -5,6 +5,7 @@ import { useAuth } from '../auth/useAuth'
 import Table from '../components/ui/Table'
 import Button from '../components/ui/Button'
 import EmptyState from '../components/ui/EmptyState'
+import Skeleton from '../components/ui/Skeleton'
 
 export default function ProfesionalesListPage() {
   const { user } = useAuth()
@@ -23,7 +24,7 @@ export default function ProfesionalesListPage() {
         )}
       </div>
 
-      {loading && <p className="text-[var(--text-muted)]">Cargando...</p>}
+      {loading && <Skeleton rows={4} />}
       {error && <p className="text-[var(--danger)]">{error.message}</p>}
       {data?.length === 0 && <EmptyState>No hay profesionales registrados.</EmptyState>}
 

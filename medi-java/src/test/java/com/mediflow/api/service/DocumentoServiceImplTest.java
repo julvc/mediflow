@@ -2,6 +2,7 @@ package com.mediflow.api.service;
 
 import com.mediflow.api.domain.Documento;
 import com.mediflow.api.domain.EstadoDocumento;
+import com.mediflow.api.domain.Paciente;
 import com.mediflow.api.domain.Turno;
 import com.mediflow.api.dto.documento.CambioEstadoDocumentoRequest;
 import com.mediflow.api.dto.documento.DocumentoRequest;
@@ -34,6 +35,8 @@ class DocumentoServiceImplTest {
     private DocumentoRepository documentoRepository;
     @Mock
     private TurnoRepository turnoRepository;
+    @Mock
+    private AuditoriaService auditoriaService;
 
     @InjectMocks
     private DocumentoServiceImpl documentoService;
@@ -42,7 +45,8 @@ class DocumentoServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        turno = Turno.builder().id(1L).build();
+        Paciente paciente = Paciente.builder().id(1L).build();
+        turno = Turno.builder().id(1L).paciente(paciente).build();
     }
 
     @Test

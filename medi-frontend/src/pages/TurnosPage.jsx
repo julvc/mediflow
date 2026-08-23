@@ -6,6 +6,7 @@ import { useAuth } from '../auth/useAuth'
 import Table from '../components/ui/Table'
 import Button from '../components/ui/Button'
 import EmptyState from '../components/ui/EmptyState'
+import Skeleton from '../components/ui/Skeleton'
 import EstadoBadge from '../components/turnos/EstadoBadge'
 import MonthCalendar from '../components/turnos/MonthCalendar'
 import { claveDia, formatFechaHora, formatHora } from '../utils/date'
@@ -70,7 +71,7 @@ export default function TurnosPage() {
         </div>
       </div>
 
-      {loading && <p className="text-[var(--text-muted)]">Cargando...</p>}
+      {loading && <Skeleton rows={4} />}
       {error && <p className="text-[var(--danger)]">{error.message}</p>}
       {data?.length === 0 && <EmptyState>No hay turnos registrados.</EmptyState>}
 

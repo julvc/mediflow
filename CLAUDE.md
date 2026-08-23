@@ -4,20 +4,46 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current state
 
-This repo is at the planning stage. `medi-java/` and `medi-python/` are empty
-placeholder directories — no application code, build files, or tests exist yet.
-There is no build/lint/test tooling to run right now. When code is added to
-either directory, update this file with the actual commands (Maven/Gradle
-wrapper for `medi-java`, the test runner for `medi-python`, etc.).
+- **`medi-java/`** — complete Spring Boot 3 (Java 17) REST API: `Paciente`,
+  `Profesional`, `Turno`, `Documento` domain, Flyway migrations, JWT auth +
+  role-based `@PreAuthorize`/`@PostAuthorize` (roles `PACIENTE`/`PROFESIONAL`/
+  `ADMIN`), unit + integration tests (Testcontainers).
+  ```bash
+  cd medi-java
+  mvn compile              # or mvn -q compile
+  mvn test                 # full suite, needs Docker (Testcontainers)
+  mvn spring-boot:run      # http://localhost:8080/api/v1, needs Postgres up first
+  ```
+- **`medi-frontend/`** — React 19 + Vite SPA consuming that API. Tailwind CSS v4
+  (`@tailwindcss/vite`, no postcss config), `react-router-dom`, `lucide-react`
+  as the only discretionary dependency. See `medi-frontend/README.md`-equivalent
+  context below and the CSS tokens in `medi-frontend/src/index.css` for the
+  design system (light default, dark via `[data-theme="dark"]` or
+  `prefers-color-scheme`).
+  ```bash
+  cd medi-frontend
+  npm install
+  npm run dev               # http://localhost:5173, --strictPort recommended
+                             # to avoid drifting off the port the backend's CORS allows
+  npm run build              # production build, what a recruiter would see compiled
+  ```
+- **`medi-python/`** is still an empty placeholder directory — no code yet.
 
-`aws-local-sandbox/docker-compose.yml` is the only runnable piece today: it
-starts LocalStack (AWS emulator) and a local Postgres 16 container.
+`aws-local-sandbox/docker-compose.yml` starts LocalStack (AWS emulator) and the
+local Postgres 16 container the backend needs:
 
 ```bash
 cd aws-local-sandbox
-docker compose up -d      # start LocalStack + Postgres
-docker compose down       # stop (add -v to also wipe the Postgres volume)
+docker compose up -d postgres   # only Postgres is needed for medi-java/medi-frontend work
+docker compose down             # stop (add -v to also wipe the Postgres volume)
 ```
+
+Seed admin account (from `V2__auth_schema.sql`): `admin@mediflow.cl` / `admin1234`.
+CORS on the backend defaults to `http://localhost:5173,http://localhost:3000`
+(`mediflow.cors.allowed-origins` in `application.yml`, overridable via
+`CORS_ALLOWED_ORIGINS`) — if the frontend dev server drifts to another port
+(e.g. because 5173 was already taken), requests will fail client-side with a
+generic "Failed to fetch" until either the origin is added or the port frees up.
 
 ## Project intent
 

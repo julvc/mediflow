@@ -27,6 +27,8 @@ class ProfesionalServiceImplTest {
 
     @Mock
     private ProfesionalRepository profesionalRepository;
+    @Mock
+    private AuditoriaService auditoriaService;
 
     @InjectMocks
     private ProfesionalServiceImpl profesionalService;

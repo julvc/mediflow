@@ -1,5 +1,7 @@
 package com.mediflow.api.service.impl;
 
+import com.mediflow.api.domain.AccionAuditoria;
+import com.mediflow.api.domain.EntidadAuditoria;
 import com.mediflow.api.domain.Profesional;
 import com.mediflow.api.dto.profesional.ProfesionalRequest;
 import com.mediflow.api.dto.profesional.ProfesionalResponse;
@@ -7,6 +9,7 @@ import com.mediflow.api.exception.ConflictoDeNegocioException;
 import com.mediflow.api.exception.ResourceNotFoundException;
 import com.mediflow.api.mapper.ProfesionalMapper;
 import com.mediflow.api.repository.ProfesionalRepository;
+import com.mediflow.api.service.AuditoriaService;
 import com.mediflow.api.service.ProfesionalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +23,7 @@ import java.util.List;
 public class ProfesionalServiceImpl implements ProfesionalService {
 
     private final ProfesionalRepository profesionalRepository;
+    private final AuditoriaService auditoriaService;
 
     @Override
     public ProfesionalResponse crear(ProfesionalRequest request) {
@@ -27,6 +31,7 @@ public class ProfesionalServiceImpl implements ProfesionalService {
             throw new ConflictoDeNegocioException("Ya existe un profesional con rut " + request.rut());
         }
         Profesional guardado = profesionalRepository.save(ProfesionalMapper.toEntity(request));
+        auditoriaService.registrar(AccionAuditoria.CREAR, EntidadAuditoria.PROFESIONAL, guardado.getId(), null);
         return ProfesionalMapper.toResponse(guardado);
     }
 
@@ -48,7 +53,9 @@ public class ProfesionalServiceImpl implements ProfesionalService {
     public ProfesionalResponse actualizar(Long id, ProfesionalRequest request) {
         Profesional existente = buscarOFallar(id);
         ProfesionalMapper.actualizarEntidad(existente, request);
-        return ProfesionalMapper.toResponse(profesionalRepository.save(existente));
+        ProfesionalResponse actualizado = ProfesionalMapper.toResponse(profesionalRepository.save(existente));
+        auditoriaService.registrar(AccionAuditoria.ACTUALIZAR, EntidadAuditoria.PROFESIONAL, id, null);
+        return actualizado;
     }
 
     @Override
@@ -57,6 +64,7 @@ public class ProfesionalServiceImpl implements ProfesionalService {
             throw new ResourceNotFoundException("Profesional " + id + " no encontrado");
         }
         profesionalRepository.deleteById(id);
+        auditoriaService.registrar(AccionAuditoria.ELIMINAR, EntidadAuditoria.PROFESIONAL, id, null);
     }
 
     private Profesional buscarOFallar(Long id) {

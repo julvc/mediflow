@@ -28,6 +28,8 @@ class PacienteServiceImplTest {
 
     @Mock
     private PacienteRepository pacienteRepository;
+    @Mock
+    private AuditoriaService auditoriaService;
 
     @InjectMocks
     private PacienteServiceImpl pacienteService;

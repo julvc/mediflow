@@ -53,6 +53,8 @@ class AuthServiceImplTest {
     private PasswordEncoder passwordEncoder;
     @Mock
     private JwtService jwtService;
+    @Mock
+    private AuditoriaService auditoriaService;
 
     @InjectMocks
     private AuthServiceImpl authService;

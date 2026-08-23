@@ -4,11 +4,24 @@ import { cambiarEstadoDocumento, crearDocumento, eliminarDocumento, listarDocume
 import { useAuth } from '../../auth/useAuth'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
+import Select from '../ui/Select'
 import EstadoBadge from '../turnos/EstadoBadge'
 import CambiarEstadoMenu from '../turnos/CambiarEstadoMenu'
+import Skeleton from '../ui/Skeleton'
+import { useToast } from '../ui/Toast'
 import { ESTADO_LABEL, ESTILOS_BADGE, TRANSICIONES_VALIDAS } from '../../utils/estadoDocumento'
 
 const VACIO = { nombreArchivo: '', tipoDocumento: '', urlStorage: '' }
+
+const TIPOS_DOCUMENTO = [
+  'Examen de laboratorio',
+  'Receta médica',
+  'Informe médico',
+  'Imagenología',
+  'Certificado médico',
+  'Orden médica',
+  'Epicrisis',
+]
 
 function DocumentoForm({ turnoId, onCreado }) {
   const [form, setForm] = useState(VACIO)
@@ -45,13 +58,16 @@ function DocumentoForm({ turnoId, onCreado }) {
         </div>
       )}
       <Input label="Nombre del archivo" required value={form.nombreArchivo} onChange={onChange('nombreArchivo')} />
-      <Input
-        label="Tipo de documento"
-        required
-        value={form.tipoDocumento}
-        onChange={onChange('tipoDocumento')}
-        placeholder="Ej: examen, receta"
-      />
+      <Select label="Tipo de documento" required value={form.tipoDocumento} onChange={onChange('tipoDocumento')}>
+        <option value="" disabled>
+          Selecciona un tipo
+        </option>
+        {TIPOS_DOCUMENTO.map((t) => (
+          <option key={t} value={t}>
+            {t}
+          </option>
+        ))}
+      </Select>
       <div>
         <Input label="URL del archivo" required value={form.urlStorage} onChange={onChange('urlStorage')} placeholder="https://..." />
         <p className="mt-1 text-xs text-[var(--text-muted)]">
@@ -67,6 +83,7 @@ function DocumentoForm({ turnoId, onCreado }) {
 
 export default function DocumentosSection({ turnoId }) {
   const { user } = useAuth()
+  const toast = useToast()
   const esStaff = user.rol === 'PROFESIONAL' || user.rol === 'ADMIN'
   const { data, loading, error, refetch } = useApi(
     esStaff ? () => listarDocumentosPorTurno(turnoId) : () => Promise.resolve(null),
@@ -78,6 +95,7 @@ export default function DocumentosSection({ turnoId }) {
   function handleCreado(doc) {
     setMostrarForm(false)
     if (esStaff) {
+      toast('Documento subido')
       refetch()
     } else {
       setRecienCreado(doc)
@@ -87,6 +105,7 @@ export default function DocumentosSection({ turnoId }) {
   async function handleEliminar(id) {
     if (!window.confirm('¿Eliminar este documento? Esta acción no se puede deshacer.')) return
     await eliminarDocumento(id)
+    toast('Documento eliminado')
     refetch()
   }
 
@@ -101,7 +120,7 @@ export default function DocumentosSection({ turnoId }) {
 
       {mostrarForm && <DocumentoForm turnoId={turnoId} onCreado={handleCreado} />}
 
-      {esStaff && loading && <p className="text-sm text-[var(--text-muted)]">Cargando...</p>}
+      {esStaff && loading && <Skeleton rows={2} />}
       {esStaff && error && <p className="text-sm text-[var(--danger)]">{error.message}</p>}
       {esStaff && data?.length === 0 && !mostrarForm && (
         <p className="text-sm text-[var(--text-muted)]">Sin documentos para este turno.</p>
@@ -127,7 +146,12 @@ export default function DocumentosSection({ turnoId }) {
                   labels={ESTADO_LABEL}
                   transiciones={TRANSICIONES_VALIDAS}
                   variantePorEstado={(estado) => (estado === 'ERROR' ? 'danger' : 'secondary')}
-                  onCambiar={(nuevoEstado) => cambiarEstadoDocumento(d.id, nuevoEstado).then(refetch)}
+                  onCambiar={(nuevoEstado) =>
+                    cambiarEstadoDocumento(d.id, nuevoEstado).then(() => {
+                      toast('Estado del documento actualizado')
+                      refetch()
+                    })
+                  }
                 />
                 {user.rol === 'ADMIN' && (
                   <Button variant="danger" onClick={() => handleEliminar(d.id)}>

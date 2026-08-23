@@ -9,11 +9,13 @@ import Card from '../components/ui/Card'
 import Input from '../components/ui/Input'
 import Select from '../components/ui/Select'
 import Button from '../components/ui/Button'
+import { useToast } from '../components/ui/Toast'
 
 export default function TurnoFormPage() {
   const { user } = useAuth()
   const esStaff = user.rol === 'PROFESIONAL' || user.rol === 'ADMIN'
   const navigate = useNavigate()
+  const toast = useToast()
 
   const { data: profesionales } = useApi(listarProfesionales, [])
   // Un PACIENTE no tiene acceso a GET /pacientes (403) — ni siquiera se llama.
@@ -37,6 +39,7 @@ export default function TurnoFormPage() {
         fechaHora: new Date(fechaHora).toISOString(),
         motivo,
       })
+      toast('Turno agendado')
       navigate(`/turnos/${turno.id}`)
     } catch (err) {
       setError(err)

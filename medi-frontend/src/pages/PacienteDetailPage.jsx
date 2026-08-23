@@ -5,11 +5,15 @@ import { eliminarPaciente, obtenerPaciente } from '../api/pacientes'
 import { useAuth } from '../auth/useAuth'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
+import Skeleton from '../components/ui/Skeleton'
+import { useToast } from '../components/ui/Toast'
+import { formatFecha } from '../utils/date'
 
 export default function PacienteDetailPage() {
   const { id } = useParams()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const toast = useToast()
   const { data: paciente, loading, error } = useApi(() => obtenerPaciente(id), [id])
   const [eliminando, setEliminando] = useState(false)
   const [errorEliminar, setErrorEliminar] = useState(null)
@@ -24,6 +28,7 @@ export default function PacienteDetailPage() {
     setErrorEliminar(null)
     try {
       await eliminarPaciente(id)
+      toast('Paciente eliminado')
       navigate('/pacientes')
     } catch (err) {
       setErrorEliminar(err.message)
@@ -31,7 +36,7 @@ export default function PacienteDetailPage() {
     }
   }
 
-  if (loading) return <p className="text-[var(--text-muted)]">Cargando...</p>
+  if (loading) return <Skeleton rows={4} />
   if (error) return <p className="text-[var(--danger)]">{error.message}</p>
   if (!paciente) return null
 
@@ -71,7 +76,7 @@ export default function PacienteDetailPage() {
           <dt className="text-[var(--text-muted)]">Teléfono</dt>
           <dd className="text-[var(--text)]">{paciente.telefono}</dd>
           <dt className="text-[var(--text-muted)]">Fecha de nacimiento</dt>
-          <dd className="text-[var(--text)]">{paciente.fechaNacimiento}</dd>
+          <dd className="text-[var(--text)]">{formatFecha(paciente.fechaNacimiento)}</dd>
         </dl>
       </Card>
 

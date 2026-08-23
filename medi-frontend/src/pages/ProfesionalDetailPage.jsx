@@ -4,6 +4,7 @@ import { obtenerProfesional } from '../api/profesionales'
 import { useAuth } from '../auth/useAuth'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
+import Skeleton from '../components/ui/Skeleton'
 
 export default function ProfesionalDetailPage() {
   const { id } = useParams()
@@ -12,7 +13,7 @@ export default function ProfesionalDetailPage() {
 
   const puedeEditar = user.rol === 'ADMIN' || String(user.profesionalId) === id
 
-  if (loading) return <p className="text-[var(--text-muted)]">Cargando...</p>
+  if (loading) return <Skeleton rows={3} />
   if (error) return <p className="text-[var(--danger)]">{error.message}</p>
   if (!profesional) return null
 

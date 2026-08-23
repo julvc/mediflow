@@ -1,8 +1,11 @@
 package com.mediflow.api.service.impl;
 
+import com.mediflow.api.domain.AccionAuditoria;
+import com.mediflow.api.domain.EntidadAuditoria;
 import com.mediflow.api.domain.EstadoTurno;
 import com.mediflow.api.domain.Paciente;
 import com.mediflow.api.domain.Profesional;
+import com.mediflow.api.domain.Rol;
 import com.mediflow.api.domain.Turno;
 import com.mediflow.api.dto.turno.CambioEstadoTurnoRequest;
 import com.mediflow.api.dto.turno.TurnoRequest;
@@ -13,8 +16,13 @@ import com.mediflow.api.mapper.TurnoMapper;
 import com.mediflow.api.repository.PacienteRepository;
 import com.mediflow.api.repository.ProfesionalRepository;
 import com.mediflow.api.repository.TurnoRepository;
+import com.mediflow.api.security.UsuarioPrincipal;
+import com.mediflow.api.service.AuditoriaService;
 import com.mediflow.api.service.TurnoService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +49,7 @@ public class TurnoServiceImpl implements TurnoService {
     private final TurnoRepository turnoRepository;
     private final PacienteRepository pacienteRepository;
     private final ProfesionalRepository profesionalRepository;
+    private final AuditoriaService auditoriaService;
 
     @Override
     @Transactional
@@ -59,7 +68,10 @@ public class TurnoServiceImpl implements TurnoService {
 
         Turno turno = TurnoMapper.toEntity(request, paciente, profesional);
         turno.setEstado(EstadoTurno.PENDIENTE);
-        return TurnoMapper.toResponse(turnoRepository.save(turno));
+        Turno guardado = turnoRepository.save(turno);
+        auditoriaService.registrar(AccionAuditoria.CREAR, EntidadAuditoria.TURNO, guardado.getId(),
+                "paciente " + guardado.getPaciente().getId() + ", profesional " + guardado.getProfesional().getId());
+        return TurnoMapper.toResponse(guardado);
     }
 
     @Override
@@ -90,9 +102,27 @@ public class TurnoServiceImpl implements TurnoService {
         if (!TRANSICIONES_VALIDAS.get(actual).contains(nuevo)) {
             throw new ConflictoDeNegocioException("No se puede pasar de " + actual + " a " + nuevo);
         }
+        validarPermisoDeTransicion(turno, nuevo);
 
         turno.setEstado(nuevo);
-        return TurnoMapper.toResponse(turnoRepository.save(turno));
+        Turno guardado = turnoRepository.save(turno);
+        auditoriaService.registrar(AccionAuditoria.CAMBIAR_ESTADO, EntidadAuditoria.TURNO, guardado.getId(),
+                actual + " -> " + nuevo);
+        return TurnoMapper.toResponse(guardado);
+    }
+
+    // Un PACIENTE solo puede cancelar su propio turno; confirmarlo o completarlo son
+    // decisiones del centro medico (PROFESIONAL/ADMIN), no del paciente. PROFESIONAL
+    // y ADMIN mantienen via libre a cualquier transicion valida de TRANSICIONES_VALIDAS.
+    private void validarPermisoDeTransicion(Turno turno, EstadoTurno nuevo) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof UsuarioPrincipal principal)
+                || principal.getRol() != Rol.PACIENTE) {
+            return;
+        }
+        if (nuevo != EstadoTurno.CANCELADO || !turno.getPaciente().getId().equals(principal.getPacienteId())) {
+            throw new AccessDeniedException("Un paciente solo puede cancelar su propio turno");
+        }
     }
 
     private Turno buscarOFallar(Long id) {

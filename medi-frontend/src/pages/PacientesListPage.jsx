@@ -4,6 +4,7 @@ import { listarPacientes } from '../api/pacientes'
 import Table from '../components/ui/Table'
 import Button from '../components/ui/Button'
 import EmptyState from '../components/ui/EmptyState'
+import Skeleton from '../components/ui/Skeleton'
 
 export default function PacientesListPage() {
   const { data, loading, error } = useApi(listarPacientes, [])
@@ -19,7 +20,7 @@ export default function PacientesListPage() {
         </Link>
       </div>
 
-      {loading && <p className="text-[var(--text-muted)]">Cargando...</p>}
+      {loading && <Skeleton rows={4} />}
       {error && <p className="text-[var(--danger)]">{error.message}</p>}
       {data?.length === 0 && <EmptyState>No hay pacientes registrados.</EmptyState>}
 

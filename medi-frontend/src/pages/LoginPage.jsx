@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import Card from '../components/ui/Card'
 import Input from '../components/ui/Input'
@@ -66,6 +66,12 @@ export default function LoginPage() {
             {submitting ? 'Ingresando...' : 'Ingresar'}
           </Button>
         </form>
+        <p className="mt-4 text-center text-sm text-[var(--text-muted)]">
+          ¿Eres paciente y no tienes cuenta?{' '}
+          <Link to="/registro" className="text-[var(--accent)] hover:underline">
+            Regístrate
+          </Link>
+        </p>
       </Card>
     </div>
   )

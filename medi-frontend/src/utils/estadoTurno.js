@@ -7,6 +7,15 @@ export const TRANSICIONES_VALIDAS = {
   COMPLETADO: [],
 }
 
+// Un PACIENTE solo puede anular su propio turno (nunca confirmarlo ni completarlo
+// — eso lo decide el centro medico). Espejo de la regla real en TurnoServiceImpl.
+export const TRANSICIONES_PACIENTE = {
+  PENDIENTE: ['CANCELADO'],
+  CONFIRMADO: ['CANCELADO'],
+  CANCELADO: [],
+  COMPLETADO: [],
+}
+
 export const ESTADO_LABEL = {
   PENDIENTE: 'Pendiente',
   CONFIRMADO: 'Confirmado',

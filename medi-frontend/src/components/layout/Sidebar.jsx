@@ -6,6 +6,8 @@ const NAV_ITEMS = [
   { to: '/turnos', label: (rol) => (rol === 'PACIENTE' ? 'Mis turnos' : 'Turnos') },
   { to: '/pacientes', label: () => 'Pacientes', roles: ['PROFESIONAL', 'ADMIN'] },
   { to: '/profesionales', label: () => 'Profesionales' },
+  { to: '/admin/usuarios/nuevo', label: () => 'Crear cuenta', roles: ['ADMIN'] },
+  { to: '/auditoria', label: () => 'Auditoría', roles: ['ADMIN'] },
 ]
 
 export default function Sidebar() {
@@ -13,14 +15,14 @@ export default function Sidebar() {
   const items = NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(user.rol))
 
   return (
-    <nav className="flex flex-col gap-1">
+    <nav className="flex gap-1 md:flex-col">
       {items.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
           end={item.end}
           className={({ isActive }) =>
-            `rounded-lg px-3 py-2 text-sm ${
+            `whitespace-nowrap rounded-lg px-3 py-2 text-sm ${
               isActive
                 ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
                 : 'text-[var(--text-muted)] hover:bg-[var(--surface-2)]'

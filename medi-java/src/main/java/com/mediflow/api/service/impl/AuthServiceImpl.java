@@ -1,5 +1,7 @@
 package com.mediflow.api.service.impl;
 
+import com.mediflow.api.domain.AccionAuditoria;
+import com.mediflow.api.domain.EntidadAuditoria;
 import com.mediflow.api.domain.Paciente;
 import com.mediflow.api.domain.RefreshToken;
 import com.mediflow.api.domain.Rol;
@@ -17,6 +19,7 @@ import com.mediflow.api.repository.ProfesionalRepository;
 import com.mediflow.api.repository.RefreshTokenRepository;
 import com.mediflow.api.repository.UsuarioRepository;
 import com.mediflow.api.security.JwtService;
+import com.mediflow.api.service.AuditoriaService;
 import com.mediflow.api.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,6 +47,7 @@ public class AuthServiceImpl implements AuthService {
     private final ProfesionalRepository profesionalRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final AuditoriaService auditoriaService;
 
     @Value("${mediflow.jwt.access-token-minutos}")
     private long accessTokenMinutos;
@@ -76,6 +80,8 @@ public class AuthServiceImpl implements AuthService {
                 .activo(true)
                 .build();
         usuario = usuarioRepository.save(usuario);
+        auditoriaService.registrar(AccionAuditoria.REGISTRO, EntidadAuditoria.USUARIO, usuario.getId(),
+                usuario.getRol() + " " + usuario.getEmail());
         return new UsuarioResponse(usuario.getId(), usuario.getEmail(), usuario.getRol());
     }
 
@@ -89,6 +95,10 @@ public class AuthServiceImpl implements AuthService {
             throw new BadCredentialsException("Email o contraseña incorrectos");
         }
 
+        // Login corre sin autenticacion previa en el SecurityContext (el JWT recien se
+        // va a emitir), por eso el actor se pasa explicito en vez de leerlo del contexto.
+        auditoriaService.registrarComoUsuario(usuario.getId(), usuario.getEmail(),
+                AccionAuditoria.LOGIN, EntidadAuditoria.USUARIO, usuario.getId(), null);
         return generarTokens(usuario);
     }
 

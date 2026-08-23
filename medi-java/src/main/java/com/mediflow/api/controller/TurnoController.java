@@ -57,8 +57,11 @@ public class TurnoController {
         return pacienteId != null ? turnoService.listarPorPaciente(pacienteId) : turnoService.listarTodos();
     }
 
+    // Cualquier rol autenticado puede llamar este endpoint; la regla de negocio de
+    // que un PACIENTE solo puede cancelar su propio turno (no confirmarlo ni
+    // completarlo) vive en TurnoServiceImpl, porque requiere el turno ya cargado.
     @PatchMapping("/{id}/estado")
-    @PreAuthorize("hasAnyRole('PROFESIONAL','ADMIN')")
+    @PreAuthorize("hasAnyRole('PACIENTE','PROFESIONAL','ADMIN')")
     public TurnoResponse cambiarEstado(@PathVariable Long id, @Valid @RequestBody CambioEstadoTurnoRequest request) {
         return turnoService.cambiarEstado(id, request);
     }

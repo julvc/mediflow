@@ -1,6 +1,8 @@
 package com.mediflow.api.service.impl;
 
+import com.mediflow.api.domain.AccionAuditoria;
 import com.mediflow.api.domain.Documento;
+import com.mediflow.api.domain.EntidadAuditoria;
 import com.mediflow.api.domain.EstadoDocumento;
 import com.mediflow.api.domain.Turno;
 import com.mediflow.api.dto.documento.CambioEstadoDocumentoRequest;
@@ -11,6 +13,7 @@ import com.mediflow.api.exception.ResourceNotFoundException;
 import com.mediflow.api.mapper.DocumentoMapper;
 import com.mediflow.api.repository.DocumentoRepository;
 import com.mediflow.api.repository.TurnoRepository;
+import com.mediflow.api.service.AuditoriaService;
 import com.mediflow.api.service.DocumentoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -38,6 +41,7 @@ public class DocumentoServiceImpl implements DocumentoService {
 
     private final DocumentoRepository documentoRepository;
     private final TurnoRepository turnoRepository;
+    private final AuditoriaService auditoriaService;
 
     @Override
     @Transactional
@@ -45,6 +49,8 @@ public class DocumentoServiceImpl implements DocumentoService {
         Turno turno = turnoRepository.findById(request.turnoId())
                 .orElseThrow(() -> new ResourceNotFoundException("Turno " + request.turnoId() + " no encontrado"));
         Documento guardado = documentoRepository.save(DocumentoMapper.toEntity(request, turno));
+        auditoriaService.registrar(AccionAuditoria.CREAR, EntidadAuditoria.DOCUMENTO, guardado.getId(),
+                request.tipoDocumento());
         return DocumentoMapper.toResponse(guardado);
     }
 
@@ -74,7 +80,9 @@ public class DocumentoServiceImpl implements DocumentoService {
         }
 
         documento.setEstado(nuevo);
-        return DocumentoMapper.toResponse(documentoRepository.save(documento));
+        DocumentoResponse actualizado = DocumentoMapper.toResponse(documentoRepository.save(documento));
+        auditoriaService.registrar(AccionAuditoria.CAMBIAR_ESTADO, EntidadAuditoria.DOCUMENTO, id, actual + " -> " + nuevo);
+        return actualizado;
     }
 
     @Override
@@ -84,6 +92,7 @@ public class DocumentoServiceImpl implements DocumentoService {
             throw new ResourceNotFoundException("Documento " + id + " no encontrado");
         }
         documentoRepository.deleteById(id);
+        auditoriaService.registrar(AccionAuditoria.ELIMINAR, EntidadAuditoria.DOCUMENTO, id, null);
     }
 
     private Documento buscarOFallar(Long id) {

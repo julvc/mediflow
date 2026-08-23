@@ -6,15 +6,19 @@ import Card from '../components/ui/Card'
 import EstadoBadge from '../components/turnos/EstadoBadge'
 import CambiarEstadoMenu from '../components/turnos/CambiarEstadoMenu'
 import DocumentosSection from '../components/documentos/DocumentosSection'
+import Skeleton from '../components/ui/Skeleton'
+import { useToast } from '../components/ui/Toast'
 import { formatFechaHora } from '../utils/date'
+import { TRANSICIONES_PACIENTE } from '../utils/estadoTurno'
 
 export default function TurnoDetailPage() {
   const { id } = useParams()
   const { user } = useAuth()
+  const toast = useToast()
   const { data: turno, loading, error, refetch } = useApi(() => obtenerTurno(id), [id])
   const esStaff = user.rol === 'PROFESIONAL' || user.rol === 'ADMIN'
 
-  if (loading) return <p className="text-[var(--text-muted)]">Cargando...</p>
+  if (loading) return <Skeleton rows={4} />
   if (error) return <p className="text-[var(--danger)]">{error.message}</p>
   if (!turno) return null
 
@@ -38,12 +42,17 @@ export default function TurnoDetailPage() {
           <dd className="text-[var(--text)]">{turno.nombreProfesional}</dd>
         </dl>
 
-        {esStaff && (
-          <CambiarEstadoMenu
-            estadoActual={turno.estado}
-            onCambiar={(nuevoEstado) => cambiarEstadoTurno(id, nuevoEstado).then(refetch)}
-          />
-        )}
+        <CambiarEstadoMenu
+          estadoActual={turno.estado}
+          transiciones={esStaff ? undefined : TRANSICIONES_PACIENTE}
+          variantePorEstado={esStaff ? undefined : () => 'danger'}
+          onCambiar={(nuevoEstado) =>
+            cambiarEstadoTurno(id, nuevoEstado).then(() => {
+              toast('Estado del turno actualizado')
+              refetch()
+            })
+          }
+        />
       </Card>
 
       <Card>

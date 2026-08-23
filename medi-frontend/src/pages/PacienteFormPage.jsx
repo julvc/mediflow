@@ -4,6 +4,8 @@ import { actualizarPaciente, crearPaciente, obtenerPaciente } from '../api/pacie
 import Card from '../components/ui/Card'
 import Input from '../components/ui/Input'
 import Button from '../components/ui/Button'
+import Skeleton from '../components/ui/Skeleton'
+import { useToast } from '../components/ui/Toast'
 
 const VACIO = { rut: '', nombres: '', apellidos: '', fechaNacimiento: '', email: '', telefono: '' }
 
@@ -11,6 +13,7 @@ export default function PacienteFormPage() {
   const { id } = useParams()
   const editando = Boolean(id)
   const navigate = useNavigate()
+  const toast = useToast()
   const [form, setForm] = useState(VACIO)
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -43,6 +46,7 @@ export default function PacienteFormPage() {
     setSubmitting(true)
     try {
       const guardado = editando ? await actualizarPaciente(id, form) : await crearPaciente(form)
+      toast(editando ? 'Paciente actualizado' : 'Paciente creado')
       navigate(`/pacientes/${guardado.id}`)
     } catch (err) {
       setError(err)
@@ -51,7 +55,7 @@ export default function PacienteFormPage() {
     }
   }
 
-  if (loading) return <p className="text-[var(--text-muted)]">Cargando...</p>
+  if (loading) return <Skeleton rows={5} />
 
   return (
     <Card className="max-w-lg">
