@@ -7,6 +7,7 @@ import java.time.Instant;
 public record DocumentoResponse(
         Long id,
         Long turnoId,
+        Long pacienteId,
         String nombreArchivo,
         String urlStorage,
         String tipoDocumento,

@@ -25,6 +25,7 @@ public final class DocumentoMapper {
         return new DocumentoResponse(
                 entity.getId(),
                 entity.getTurno().getId(),
+                entity.getTurno().getPaciente().getId(),
                 entity.getNombreArchivo(),
                 entity.getUrlStorage(),
                 entity.getTipoDocumento(),

@@ -7,6 +7,7 @@ import com.mediflow.api.service.DocumentoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,12 +40,11 @@ public class DocumentoController {
         return ResponseEntity.created(ubicacion).body(creado);
     }
 
-    // TODO: un Documento no tiene dueno directo (pertenece a un Turno, que pertenece
-    // a un Paciente - seria un chequeo de 2 saltos) y hoy no hay flujo de frontend
-    // donde un PACIENTE necesite ver sus propios documentos directamente. Restringido
-    // a staff por ahora en vez de construir ese chequeo sin caso de uso real (YAGNI).
+    // @PostAuthorize (no @PreAuthorize): el dueno real es el Paciente del Turno del
+    // Documento, dato que solo se conoce despues de cargarlo. Mismo patron que
+    // TurnoController.obtenerPorId, reusando esPropioPaciente contra returnObject.
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('PROFESIONAL','ADMIN')")
+    @PostAuthorize("hasAnyRole('PROFESIONAL','ADMIN') or @recursoAuth.esPropioPaciente(authentication, returnObject.pacienteId())")
     public DocumentoResponse obtenerPorId(@PathVariable Long id) {
         return documentoService.obtenerPorId(id);
     }
