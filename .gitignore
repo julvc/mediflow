@@ -25,3 +25,9 @@ mediflow-infra/aws/compute/lambda/fitz/
 mediflow-infra/aws/compute/lambda/PIL/
 mediflow-infra/aws/compute/lambda/pillow.libs/
 mediflow-infra/aws/compute/build/
+mediflow-infra/gcp/compute/function/procesador/
+mediflow-infra/gcp/compute/build/
+mediflow-infra/gcp/terraform.tfvars
+CLAUDE.md
+mediflow-infra/gcp/GUIA-EJECUCION.md
+CLAUDE.md

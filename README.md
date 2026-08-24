@@ -32,9 +32,27 @@ Un centro médico necesita:
 
 - `medi-java`: dominio completo, API REST, auth JWT + roles, migraciones, Dockerfile y tests unitarios/integración implementados.
 - `medi-frontend`: SPA en React completa — auth con refresh de tokens, CRUD de Pacientes/Profesionales, Turnos con vista calendario, Documentos embebidos por turno, registro por rol, tema claro/oscuro.
-- `medi-python/procesador`: implementado y probado (valida PDF, extrae metadata, genera thumbnail), con capas SOLID (interfaces + implementaciones inyectadas). Pendiente: adaptadores de evento S3/GCS (Terraform, día 3 en adelante).
+- `medi-python/procesador`: implementado y probado (valida PDF, extrae metadata, genera thumbnail), con capas SOLID (interfaces + implementaciones inyectadas). Desplegado como Lambda vía Terraform (ver punto siguiente).
 - `medi-python/backend`: API completa en paralelo a Java, con la misma profundidad de auth — Paciente, Profesional, Turno (máquina de estados y chequeo de conflicto de horario) y Documento, más roles/RBAC (`requiere_roles()`, reglas de dueño-del-recurso) y rotación de refresh token. 44 tests. Sin auditoría propia todavía (Java sí la tiene).
 - Cliente Java (`WorkerClient`, `RestClient` de Spring) que llama a `worker_api.py` — probado con `MockRestServiceServer` y verificado con una llamada real al proceso corriendo. Deliberadamente **no** conectado desde `DocumentoController`: el Javadoc de `DocumentoRequest` dice que el binario nunca pasa por esa API, y hacer que Java lo descargue para reenviarlo al worker violaría esa decisión — su invocador real es la Lambda/Cloud Function disparada por el evento de S3/GCS.
-- Infraestructura como código (Terraform AWS/GCP): pendiente.
+- Infraestructura como código AWS (`mediflow-infra/aws/`, Terraform vía `tflocal`/LocalStack): módulos `storage` (S3 + versioning + lifecycle 7 días + public-access-block), `data` (DynamoDB single-table, DLQ SQS, Secrets Manager), `iam` (rol de ejecución Lambda con política de mínimo privilegio, 4 acciones explícitas), `compute` (Lambda del worker, empaquetada por `build.sh`). 13 recursos aplicados y verificados end-to-end: subida real de un PDF a `s3://mediflow-documentos/inbox/` dispara la Lambda, que escribe metadata + thumbnail en DynamoDB; un archivo inválido es rechazado correctamente por el worker (`DocumentoInvalidoError`) y su evento llega a la DLQ tras agotar reintentos. Idempotencia confirmada con un ciclo `destroy` + `apply`. Infraestructura GCP (`mediflow-infra/gcp/`) escrita y validada (`terraform validate`) con los mismos módulos espejo (Cloud Storage, Cloud SQL en VPC privada, Cloud Run + Cloud Run Function gen2, Workload Identity Federation para CI/CD) más los workflows de GitHub Actions (`.github/workflows/`); aplicación real pendiente de autenticar `gcloud` contra el proyecto `mediflow-lab`.
+
+## Tabla de equivalencias AWS ↔ GCP
+
+| Concepto | AWS | GCP |
+|---|---|---|
+| Contenedor serverless | Fargate / App Runner / Lambda | Cloud Run |
+| Registro de imágenes | ECR | Artifact Registry |
+| PostgreSQL gestionado | RDS | Cloud SQL |
+| Object storage | S3 | Cloud Storage |
+| Secretos | Secrets Manager | Secret Manager |
+| Función event-driven | Lambda | Cloud Run Functions gen2 |
+| Bus de eventos | EventBridge | Eventarc / Pub/Sub |
+| Identidad de carga de trabajo | IAM Role + OIDC | Service Account + WIF |
+| Aislamiento / facturación | Cuenta + Organizations | Proyecto + Carpetas |
+| Logs y métricas | CloudWatch | Cloud Logging / Monitoring |
+| Trazas | X-Ray | Cloud Trace |
+| Red privada a servicios | VPC Endpoints (PrivateLink) | Private Service Connect / VPC directo |
+| State locking (Terraform) | S3 + DynamoDB | GCS (nativo) |
 
 Ver `medi-java/INFORME-AVANCE.md` para el detalle técnico de lo construido hasta ahora.

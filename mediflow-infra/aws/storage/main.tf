@@ -22,6 +22,14 @@ resource "aws_s3_bucket_lifecycle_configuration" "documentos" {
       days = 7
     }
   }
+
+  # transition_default_minimum_object_size es un default del provider AWS v5
+  # que LocalStack Community no persiste/devuelve: sin esto, cada plan/apply
+  # intenta "corregirlo" y el waiter de este recurso nunca confirma el estado
+  # contra LocalStack (timeout de 3min, visto tanto en create como en update).
+  lifecycle {
+    ignore_changes = [transition_default_minimum_object_size]
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "documentos" {

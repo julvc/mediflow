@@ -1,0 +1,11 @@
+# Perfil activado por SPRING_PROFILES_ACTIVE=cloud (Cloud Run, ver
+# mediflow-infra/gcp/compute/main.tf). El Cloud SQL JDBC Socket Factory
+# (dependencia agregada en pom.xml) reemplaza host:puerto por el nombre de
+# conexión de la instancia y autentica con la identidad de la service
+# account (roles/cloudsql.client) — no hay contraseña de red que
+# interceptar ni VPC que configurar del lado de Java.
+spring:
+  datasource:
+    url: jdbc:postgresql:///mediflow?cloudSqlInstance=${DB_CONNECTION_NAME}&socketFactory=com.google.cloud.sql.postgres.SocketFactory
+    username: mediflow_app
+    password: ${DB_PASSWORD}

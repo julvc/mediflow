@@ -137,8 +137,126 @@ alive and are meant to be read side by side.
   (API) + Cloud SQL (Postgres 16, relational version of the same domain) +
   Cloud Storage + Eventarc-triggered Cloud Run Function (worker).
 - Terraform modules are meant to mirror each other under
-  `mediflow-infra/aws/` and `mediflow-infra/gcp/` (not yet created) —
-  `storage/`, `compute/`, `data/`, `iam/`.
+  `mediflow-infra/aws/` and `mediflow-infra/gcp/` — `storage/`, `compute/`,
+  `data/`, `iam/`. **AWS side is done** (Día 3): 13 recursos aplicados vía
+  `tflocal` contra LocalStack, verificados end-to-end (subida de PDF real a
+  `s3://mediflow-documentos/inbox/` → Lambda → metadata+thumbnail en
+  DynamoDB; archivo inválido correctamente rechazado con
+  `DocumentoInvalidoError`). **GCP side is written and `terraform validate`
+  passes (Días 8-10)**, apply pending `gcloud auth login` (SDK installed via
+  winget, project `mediflow-lab`) — step-by-step from credentials to a
+  working deploy, with the concepts explained, in
+  `mediflow-infra/gcp/GUIA-EJECUCION.md`:
+  - `storage/`: un solo `google_storage_bucket` cubre lo que en AWS son 3
+    recursos (`uniform_bucket_level_access` + `public_access_prevention` +
+    `lifecycle_rule` en vez de versioning/lifecycle/public-access-block
+    separados) — diferencia real de forma entre providers.
+  - `data/`: VPC propia + peering de Service Networking +
+    `google_sql_database_instance` (Postgres 16, `db-f1-micro`, sin IP
+    pública) — a diferencia de DynamoDB en AWS, Cloud SQL exige construir el
+    puente de red antes de poder existir sin IP pública.
+  - `compute/`: Artifact Registry + `google_cloud_run_v2_service` (con
+    `lifecycle.ignore_changes` en la imagen del contenedor, porque CI/CD
+    despliega imágenes nuevas vía `gcloud run deploy` después de que
+    Terraform crea el servicio — sin el ignore_changes, cada apply pisaría
+    la imagen real con el placeholder) + `google_cloudfunctions2_function`
+    gen2 (worker, Eventarc trigger) con su propio adaptador
+    (`compute/function/main.py`, análogo a `aws/compute/lambda/handler.py`
+    pero escribiendo a Cloud SQL/Postgres en vez de DynamoDB — mismo
+    `procesador/` sin cambios, solo el adaptador sabe en qué nube corre).
+    `compute/build.sh` solo copia `procesador/` (sin vendorizar wheels como
+    en AWS): Cloud Functions gen2 corre `pip install` del lado del servidor
+    vía buildpacks, Lambda no.
+  - **Conectividad a Cloud SQL, dos mecanismos distintos, a propósito**:
+    `mediflow-api` (Cloud Run v2 + Java) usa el **Cloud SQL JDBC Socket
+    Factory** (`com.google.cloud.sql:postgres-socket-factory` en
+    `medi-java/pom.xml` + `application-cloud.yml`) en vez del mount nativo
+    `/cloudsql` de Cloud Run — la primera versión de este Terraform montaba
+    ese volumen, pero `medi-java` no tenía nada que supiera leerlo (un JDBC
+    estándar no habla socket Unix sin ayuda); se sacó el volumen y se agregó
+    la dependencia real. `mediflow-worker` (Cloud Functions gen2 + Python)
+    no tiene ese mount disponible en absoluto, así que se conecta por TCP a
+    la IP privada de la instancia (`DB_HOST`) a través de un
+    `google_vpc_access_connector` clásico — campo marcado con `ponytail:` en
+    `compute/main.tf` por ser el de mayor riesgo de haber cambiado de
+    nombre en el provider, verificar contra el primer `terraform plan` real.
+  - `iam/`: dos service accounts de runtime (API, worker) con mínimo
+    privilegio, más (Día 9) un `google_iam_workload_identity_pool` +
+    provider OIDC y una `mediflow-deploy-sa` para CI/CD — cero JSON de
+    service account. El trust por repo+rama vive en el
+    `attribute_condition` del provider (lado GCP), no en el YAML del
+    workflow (`.github/workflows/ci.yml`, `deploy.yml`) — el YAML es
+    comodidad, la condición es la frontera de seguridad real.
+  - Backend de state en GCS queda comentado en `versions.tf` hasta el
+    bootstrap manual (`gsutil mb gs://mediflow-lab-tfstate`) — problema
+    clásico de huevo-y-gallina, el bucket no puede crearlo el mismo config
+    que lo va a usar como backend.
+  - Root `main.tf` habilita las 13 APIs necesarias (`google_project_service`,
+    `disable_on_destroy = false`) antes de que cualquier módulo intente usar
+    el servicio — GCP exige la API habilitada primero, a diferencia de AWS
+    donde los servicios ya están disponibles por defecto en la cuenta.
+  - **Día 10**: `medi-java` tiene `logback-spring.xml` con perfil `cloud`
+    (JSON vía `logstash-logback-encoder`, campo `severity` en vez de
+    `level` porque es el nombre que Cloud Logging espera para colorear por
+    nivel) — el Cloud Run service lo activa con
+    `SPRING_PROFILES_ACTIVE=cloud`; local/tests siguen con el patrón de
+    consola normal. `google_monitoring_alert_policy` (tasa de error > 1%)
+    ya está en el root; el dashboard completo (p95, instancias) se diseña
+    después del primer deploy real — hacerlo antes es adivinar sobre
+    métricas que no existen todavía.
+
+  ```bash
+  cd mediflow-infra/aws
+  tflocal init
+  tflocal apply -auto-approve   # LocalStack debe estar arriba (aws-local-sandbox)
+  ```
+
+  Dos gotchas de entorno encontrados y resueltos, documentados por si
+  reaparecen:
+  - **Avast intercepta el handshake mTLS interno de Terraform** (core ↔
+    subprocesos `terraform-provider-*.exe`, tráfico 100% loopback) vía su
+    escaneo HTTPS de Web Shield, causando
+    `x509: certificate signed by unknown authority` en `init`/cualquier
+    plan/apply. No es un problema de Terraform ni de LocalStack. Workaround
+    verificado: desactivar temporalmente los escudos de Avast (icono de
+    bandeja → Control de escudos → deshabilitar N minutos) solo mientras se
+    corre el comando — nunca cambiar la config de Avast de forma
+    automatizada, eso lo hace el usuario.
+  - **`aws_s3_bucket_lifecycle_configuration` nunca confirma su propio
+    create contra LocalStack Community**: el *waiter* del provider AWS v5
+    espera un campo (`transition_default_minimum_object_size`) que
+    LocalStack no persiste/devuelve, y siempre hace timeout a los 3 min —
+    aunque el recurso sí se crea correctamente del lado de LocalStack.
+    `storage/main.tf` tiene `lifecycle { ignore_changes =
+    [transition_default_minimum_object_size] }` para que **updates**
+    posteriores no vuelvan a chocar con esto, pero el waiter igual se activa
+    en cualquier **create** desde cero (p.ej. tras un `destroy`) — el
+    procedimiento en ese caso es dejar que falle y reconciliar con
+    `tflocal import module.storage.aws_s3_bucket_lifecycle_configuration.documentos
+    mediflow-documentos`, no reintentar el apply esperando que cambie.
+  - **`aws_secretsmanager_secret` con nombre fijo falla al recrearse tras un
+    `destroy`**: AWS deja el secreto en estado "programado para eliminación"
+    por una ventana de recuperación (comportamiento real de AWS, no de
+    LocalStack) y el siguiente `apply` choca con
+    `already scheduled for deletion`. Se agregó `recovery_window_in_days = 0`
+    al recurso (`data/main.tf`) — correcto para secretos placeholder en un
+    sandbox que se destruye/recrea seguido; nunca en un secreto real de
+    producción.
+  - LocalStack Community **sí** simula los reintentos automáticos de
+    invocación asíncrona de Lambda (S3 trigger) y la entrega a la DLQ tras
+    agotarlos — solo que puede tardar bastante más que los ~3 reintentos
+    inmediatos de AWS real (se confirmó con un archivo inválido: llegó a la
+    DLQ, pero después de varios minutos de espera, no al toque). No asumir
+    que está vacía tras una espera corta.
+  - **Chequeo de idempotencia confirmado**: `tflocal destroy -auto-approve`
+    seguido de `tflocal apply -auto-approve` (+ el import puntual de
+    lifecycle_configuration de arriba) reconstruye los 13 recursos y
+    `tflocal plan` queda en "No changes". Si el bucket tiene objetos subidos
+    fuera de Terraform (pruebas manuales), `destroy` falla con
+    `BucketNotEmpty` por ser versionado — hay que vaciar las versiones con
+    `awslocal s3api list-object-versions` + `delete-object --version-id`
+    antes de reintentar (no es un bug, es el comportamiento correcto de
+    seguridad de S3 versionado).
 
 ### Constraints that shape any infra/code suggestions
 

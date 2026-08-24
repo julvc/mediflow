@@ -1,0 +1,5 @@
+project_id = "mediflow-lab"
+region     = "us-central1"
+# imagen_api: dejar el default (placeholder) hasta el primer build+push del
+# Día 5; despues del deploy real, el lifecycle.ignore_changes en
+# compute/main.tf evita que un apply posterior lo pise.
