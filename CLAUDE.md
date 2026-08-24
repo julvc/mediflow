@@ -46,19 +46,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - **`worker_api.py`** — a thin FastAPI wrapper (`POST /procesar`, multipart
     upload) around `procesador/`. This is the integration point for
     **medi-java**, which can't import Python directly and calls this over
-    HTTP; **medi-python/backend** instead imports `procesador/` as a library
-    (no HTTP hop to itself). No Java client exists yet — the contract
-    (`POST /procesar` → `{nombreArchivo, tamanoBytes, paginas, titulo, autor,
-    thumbnailPngBase64}`, `422` on an invalid PDF) is curl-verified but not
-    yet wired into `DocumentoController`.
+    HTTP (`com.mediflow.api.worker.WorkerClient`, a Spring `RestClient` —
+    tested with `MockRestServiceServer` and curl-verified against the real
+    running process); **medi-python/backend** instead imports `procesador/`
+    as a library (no HTTP hop to itself). `WorkerClient` is intentionally
+    **not** wired into `DocumentoController` — `DocumentoRequest`'s own
+    Javadoc says the binary never passes through that API (only its
+    `urlStorage` reference does); having Java download the file to forward
+    it to the worker would violate that. The client stays as a tested,
+    working proof the HTTP contract works — its real caller, in the eventual
+    cloud architecture, is the Lambda/Cloud Run Function triggered directly
+    by the S3/GCS event, not the Java API.
   - **`backend/`** — a second, independent REST API (FastAPI + SQLAlchemy +
     JWT), built **in parallel to `medi-java`, not replacing it** — the point
     is comparing the same domain in both stacks, same as the AWS/GCP split
     compares clouds. Same layering as medi-java (router → service → repository,
-    interfaces the service depends on injected at the router). Currently
-    covers `Paciente` CRUD + `/auth/registro` + `/auth/login` (own JWT, own
-    `Usuario` table, no refresh-token rotation or roles yet — that's medi-java's
-    depth, not duplicated here). Runs against its **own** Postgres instance
+    interfaces the service depends on injected at the router), now with the
+    same auth depth: `Paciente`, `Profesional`, `Turno` (state machine +
+    same-slot conflict check as medi-java), `Documento`, `/auth/registro`
+    (same domain-vinculo validation and anti-IDOR email check as
+    `AuthServiceImpl`) + `/auth/login` + `/auth/refresh` (rotation, SHA-256
+    hash, same mechanism as Java's `RefreshToken`) + `/auth/logout`, and
+    role-based access (`requiere_roles()` — a dependency factory, the
+    closest FastAPI equivalent to `@PreAuthorize`; owner-of-resource checks
+    like Java's `@recursoAuth` are explicit code in the router/service, same
+    as Java). Seeds `admin@mediflow.cl` / `admin1234` on startup — same
+    credentials as Java's Flyway seed, since public registro can't create the
+    first ADMIN. Runs against its **own** Postgres instance
     (`aws-local-sandbox` service `postgres-python`, port 5433, db
     `mediflow_python`) — deliberately not sharing schema with medi-java's
     Flyway-managed `mediflow` database.

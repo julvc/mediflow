@@ -7,6 +7,7 @@ class Configuracion(BaseSettings):
     database_url: str = "postgresql://postgres:local@localhost:5433/mediflow_python"
     jwt_secret: str = "mediflow-python-dev-secret-cambiar-en-produccion"
     jwt_expira_minutos: int = 15
+    refresh_token_dias: int = 7
 
 
 configuracion = Configuracion()

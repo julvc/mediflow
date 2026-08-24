@@ -1,40 +1,42 @@
-"""Auth minima para este backend: registro + login con JWT propio.
-
-A diferencia de medi-java, no hay refresh token con rotacion ni roles — es
-el subconjunto necesario para demostrar el patron (hash de password, emision
-y validacion de JWT) sin duplicar semanas de trabajo de auth de Java. El
-patron (hash -> verificar -> emitir token) es el mismo en ambos stacks.
-"""
-
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from ..bd import get_db
-from ..esquemas import LoginRequest, RegistroRequest, TokenResponse
-from ..modelos import Usuario
-from ..seguridad import crear_token, hashear_password, verificar_password
+from ..dependencias import UsuarioActual, get_usuario_actual_opcional
+from ..esquemas import LoginRequest, RefreshRequest, RegistroRequest, TokenResponse
+from ..pacientes.repositorio import SQLAlchemyPacienteRepository
+from ..profesionales.repositorio import SQLAlchemyProfesionalRepository
+from .servicio import AuthService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/registro", status_code=status.HTTP_201_CREATED)
-def registro(datos: RegistroRequest, db: Session = Depends(get_db)):
-    ya_existe = db.query(Usuario).filter(Usuario.email == datos.email).first() is not None
-    if ya_existe:
-        raise HTTPException(status.HTTP_409_CONFLICT, f"Ya existe un usuario con el email {datos.email}")
+def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
+    return AuthService(db, SQLAlchemyPacienteRepository(db), SQLAlchemyProfesionalRepository(db))
 
-    usuario = Usuario(email=datos.email, password_hash=hashear_password(datos.password))
-    db.add(usuario)
-    db.commit()
-    db.refresh(usuario)
-    return {"id": usuario.id, "email": usuario.email}
+
+@router.post("/registro", status_code=status.HTTP_201_CREATED)
+def registro(
+    datos: RegistroRequest,
+    solicitante: UsuarioActual | None = Depends(get_usuario_actual_opcional),
+    servicio: AuthService = Depends(get_auth_service),
+):
+    usuario = servicio.registrar(datos, solicitante)
+    return {"id": usuario.id, "email": usuario.email, "rol": usuario.rol}
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(datos: LoginRequest, db: Session = Depends(get_db)):
-    usuario = db.query(Usuario).filter(Usuario.email == datos.email).first()
-    if usuario is None or not verificar_password(datos.password, usuario.password_hash):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Email o contraseña incorrectos")
+def login(datos: LoginRequest, servicio: AuthService = Depends(get_auth_service)):
+    access_token, refresh_token, expira_en_segundos = servicio.login(datos)
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token, expira_en_segundos=expira_en_segundos)
 
-    token, expira_en_segundos = crear_token(usuario.id, usuario.email)
-    return TokenResponse(access_token=token, expira_en_segundos=expira_en_segundos)
+
+@router.post("/refresh", response_model=TokenResponse)
+def refrescar(datos: RefreshRequest, servicio: AuthService = Depends(get_auth_service)):
+    access_token, refresh_token, expira_en_segundos = servicio.refrescar(datos.refresh_token)
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token, expira_en_segundos=expira_en_segundos)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(datos: RefreshRequest, servicio: AuthService = Depends(get_auth_service)):
+    servicio.logout(datos.refresh_token)

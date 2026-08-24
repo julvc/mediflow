@@ -12,3 +12,16 @@ __pycache__/
 .pytest_cache/
 *.pyc
 *.db
+
+# mediflow-infra
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+mediflow-infra/aws/compute/lambda/procesador/
+mediflow-infra/aws/compute/lambda/pypdf/
+mediflow-infra/aws/compute/lambda/pymupdf/
+mediflow-infra/aws/compute/lambda/fitz/
+mediflow-infra/aws/compute/lambda/PIL/
+mediflow-infra/aws/compute/lambda/pillow.libs/
+mediflow-infra/aws/compute/build/

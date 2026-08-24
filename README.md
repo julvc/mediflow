@@ -33,7 +33,8 @@ Un centro médico necesita:
 - `medi-java`: dominio completo, API REST, auth JWT + roles, migraciones, Dockerfile y tests unitarios/integración implementados.
 - `medi-frontend`: SPA en React completa — auth con refresh de tokens, CRUD de Pacientes/Profesionales, Turnos con vista calendario, Documentos embebidos por turno, registro por rol, tema claro/oscuro.
 - `medi-python/procesador`: implementado y probado (valida PDF, extrae metadata, genera thumbnail), con capas SOLID (interfaces + implementaciones inyectadas). Pendiente: adaptadores de evento S3/GCS (Terraform, día 3 en adelante).
-- `medi-python/backend`: API en paralelo a Java implementada — `Paciente` CRUD + auth JWT propio, 15 tests. Pendiente: extender a Profesional/Turno/Documento con el mismo patrón; cliente Java (`RestClient`) que llame a `worker_api.py` — el contrato HTTP ya está definido y probado, falta conectarlo desde `DocumentoController`.
+- `medi-python/backend`: API completa en paralelo a Java, con la misma profundidad de auth — Paciente, Profesional, Turno (máquina de estados y chequeo de conflicto de horario) y Documento, más roles/RBAC (`requiere_roles()`, reglas de dueño-del-recurso) y rotación de refresh token. 44 tests. Sin auditoría propia todavía (Java sí la tiene).
+- Cliente Java (`WorkerClient`, `RestClient` de Spring) que llama a `worker_api.py` — probado con `MockRestServiceServer` y verificado con una llamada real al proceso corriendo. Deliberadamente **no** conectado desde `DocumentoController`: el Javadoc de `DocumentoRequest` dice que el binario nunca pasa por esa API, y hacer que Java lo descargue para reenviarlo al worker violaría esa decisión — su invocador real es la Lambda/Cloud Function disparada por el evento de S3/GCS.
 - Infraestructura como código (Terraform AWS/GCP): pendiente.
 
 Ver `medi-java/INFORME-AVANCE.md` para el detalle técnico de lo construido hasta ahora.
