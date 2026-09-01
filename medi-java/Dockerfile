@@ -12,9 +12,9 @@ RUN mvn package -DskipTests -B
 FROM eclipse-temurin:17-jre-alpine
 RUN addgroup -S mediflow && adduser -S mediflow -G mediflow
 WORKDIR /app
-COPY --from=build /app/target/mediflow-api.jar app.jar
+COPY --from=build --chown=mediflow:mediflow /app/target/mediflow-api.jar app.jar
 USER mediflow
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
     CMD wget -q -O- http://localhost:8080/actuator/health | grep -q '"status":"UP"' || exit 1
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-XX:+UseContainerSupport", "-jar", "app.jar"]
