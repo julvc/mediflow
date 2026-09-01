@@ -1,0 +1,77 @@
+name: Deploy
+
+# Solo push a main — la condición attribute_condition del WIF provider
+# (mediflow-infra/gcp/iam/main.tf) además rechaza el token si esto llegara a
+# dispararse desde otra rama o un fork, así que hay dos capas, no una.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write # el token OIDC que WIF cambia por credenciales de GCP
+
+jobs:
+  test-java:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin
+          cache: maven
+      - name: mvn test (Testcontainers contra Postgres real)
+        working-directory: medi-java
+        run: mvn -B test
+
+  build-y-deploy:
+    needs: test-java
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Auth vía Workload Identity Federation (sin claves JSON)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Configurar Docker para Artifact Registry
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+      - name: Build + push imagen
+        working-directory: medi-java
+        run: |
+          IMAGEN=us-central1-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/mediflow-api/mediflow-api:${{ github.sha }}
+          docker build -t "$IMAGEN" .
+          docker push "$IMAGEN"
+          echo "IMAGEN=$IMAGEN" >> "$GITHUB_ENV"
+      - name: Deploy a Cloud Run
+        run: |
+          gcloud run deploy mediflow-api \
+            --image "$IMAGEN" \
+            --region us-central1 \
+            --project ${{ vars.GCP_PROJECT_ID }}
+
+  # Job separado y con environment protegido a propósito (Día 9): un cambio
+  # de infraestructura (agregar un rol IAM, cambiar el tamaño de Cloud SQL)
+  # no debe aplicarse solo porque el código de la app pasó los tests — pide
+  # aprobación manual de alguien con acceso al environment "produccion" en
+  # la configuración del repo en GitHub.
+  terraform-apply:
+    needs: test-java
+    runs-on: ubuntu-latest
+    environment: produccion
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Auth vía Workload Identity Federation (sin claves JSON)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+      - name: terraform init
+        working-directory: mediflow-infra/gcp
+        run: terraform init
+      - name: terraform apply
+        working-directory: mediflow-infra/gcp
+        run: terraform apply -auto-approve -var="project_id=${{ vars.GCP_PROJECT_ID }}"

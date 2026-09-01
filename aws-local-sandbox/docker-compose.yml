@@ -1,0 +1,26 @@
+services:
+  localstack:
+    # Pineado a 3.8 a proposito: la imagen "latest" (2026.7.3 al momento de
+    # escribir esto) exige activar una licencia Pro para CUALQUIER servicio,
+    # incluso S3 solo, incluso sin LOCALSTACK_AUTH_TOKEN — se cae con exit
+    # code 55 ("License activation failed"). Es el riesgo que el plan ya
+    # anticipaba ("desde 2026 su edicion Community requiere cuenta"). 3.8 es
+    # anterior a ese endurecimiento y sigue siendo Community/gratis sin cuenta.
+    image: localstack/localstack:3.8
+    ports: ["4566:4566"]
+    environment:
+      SERVICES: s3,lambda,dynamodb,iam,sts,sqs,logs,secretsmanager
+      DEBUG: 1
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+  postgres:
+    image: postgres:16-alpine
+    ports: ["5432:5432"]
+    environment: { POSTGRES_PASSWORD: local, POSTGRES_DB: mediflow }
+  # Postgres aparte para medi-python/backend — a proposito no comparte instancia
+  # ni esquema con el Postgres de medi-java (que Flyway administra): son dos
+  # backends independientes que resuelven el mismo dominio para comparar stacks,
+  # no una sola app con dos lenguajes.
+  postgres-python:
+    image: postgres:16-alpine
+    ports: ["5433:5432"]
+    environment: { POSTGRES_PASSWORD: local, POSTGRES_DB: mediflow_python }

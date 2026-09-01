@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Local/tests: patrón legible de siempre. Cloud Run (Día 10, perfil
+         "cloud"): JSON a stdout — Cloud Logging lo parsea automáticamente
+         sin agente extra, y "severity" es el nombre de campo que espera
+         para colorear/filtrar por nivel en su consola. -->
+    <springProfile name="!cloud">
+        <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="cloud">
+        <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <fieldNames>
+                    <level>severity</level>
+                    <timestamp>timestamp</timestamp>
+                </fieldNames>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_JSON"/>
+        </root>
+    </springProfile>
+</configuration>

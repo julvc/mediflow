@@ -1,0 +1,33 @@
+anexo-a-docker-kubernetes.md
+plan-14-dias-aws-gcp-v2-costo-cero.md
+bitacora-mediflow.html
+.vscode/settings.json
+.worktrees/
+CLAUDE.md
+.superpowers/
+
+# medi-python
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.db
+
+# mediflow-infra
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+mediflow-infra/aws/compute/lambda/procesador/
+mediflow-infra/aws/compute/lambda/pypdf/
+mediflow-infra/aws/compute/lambda/pymupdf/
+mediflow-infra/aws/compute/lambda/fitz/
+mediflow-infra/aws/compute/lambda/PIL/
+mediflow-infra/aws/compute/lambda/pillow.libs/
+mediflow-infra/aws/compute/build/
+mediflow-infra/gcp/compute/function/procesador/
+mediflow-infra/gcp/compute/build/
+mediflow-infra/gcp/terraform.tfvars
+CLAUDE.md
+mediflow-infra/gcp/GUIA-EJECUCION.md
+CLAUDE.md
