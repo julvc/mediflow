@@ -31,3 +31,6 @@ mediflow-infra/gcp/terraform.tfvars
 CLAUDE.md
 mediflow-infra/gcp/GUIA-EJECUCION.md
 CLAUDE.md
+.claude/commands/entrevista.md
+.claude/commands/explica.md
+.claude/commands/porque.md

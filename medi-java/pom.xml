@@ -43,6 +43,12 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!-- Perfil "nodb" (Día 1 GCP: smoke test de arranque sin Cloud SQL, ver application-nodb.yml) -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
         <!-- Perfil "cloud" (Cloud Run + Cloud SQL, ver application-cloud.yml) -->
         <dependency>
             <groupId>com.google.cloud.sql</groupId>
